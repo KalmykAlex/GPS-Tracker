@@ -1,50 +1,45 @@
+#!/usr/bin/env python3
+
 import serial
-import math
+import threading
+import RPi.GPIO as GPIO
 
-port = 'COM7'
-readCard = True
-PI = math.pi
-
-
-def distance(lat1, long1, lat2, long2):
-    earth_radius = 6367782
-
-    d = math.sin((PI * lat1) / 180) * \
-        math.sin((PI * lat2) / 180) + \
-        math.cos((PI * lat1) / 180) * \
-        math.cos((PI * lat2) / 180) * \
-        math.cos((PI * long1) / 180 - (PI * long2) / 180)
-
-    return math.acos(d) * earth_radius
+from datetime import date
+from queue import Queue
+from geopy.distance import geodesic
+from serial.tools import list_ports
+from mfrc522 import SimpleMFRC522
 
 
-with serial.Serial(port) as ser:
-    ser.reset_input_buffer()
-    coords = []
-    dist = 0
+def get_gps_port(manufacturer):
+    """Gets the serial port on which the GPS sensor is transmitting data."""
+    for port in list_ports.comports():
+        if manufacturer in port.manufacturer:
+            return '/dev/' + port.name
 
-    while readCard:
-        line = ser.readline()
 
-        if line[3:6] == b'GLL':
-            lat_deg = line[7:17]
-            lat = round(float(lat_deg[:2]) + float(lat_deg[2:]) / 60, 6)
-            # print(f'Latitude: {lat}')
+def read_card(event, out_queue):
+    """Worker thread used to listen for RFID Card and then set a flag in the main thread"""
+    reader = SimpleMFRC522()
+    while True:
+        try:
+            card_id, info = reader.read()
+            out_queue.put(card_id)
+            event.set()
+        finally:
+            GPIO.cleanup()
 
-            lon_deg = line[20:31]
-            lon = round(float(lon_deg[:3]) + float(lon_deg[3:]) / 60, 6)
-            # print(f'Longitude: {lon}')
 
-            coords.append([lat, lon])
+if __name__ == '__main__':
+    card_id_queue = Queue()
+    read_card_event = threading.Event()
+    read_card_thread = threading.Thread(target=read_card,
+                                        args=[read_card_event, card_id_queue],
+                                        daemon=True)
+    read_card_thread.start()
 
-            if len(coords) == 2:
-                d_dist = distance(coords[0][0], coords[0][1],
-                                  coords[1][0], coords[1][1])
-                if d_dist > 1:
-                    dist += d_dist
-                print(coords)
-                coords.pop(0)
-                print(coords)
-                print(d_dist, dist)
-
-# TODO: implement KALMAN filter for GPS noise reduction
+    while True:
+        if read_card_event.is_set():
+            print('CARD READ!')
+            if not card_id_queue.empty():
+                card_id = card_id_queue.get()
