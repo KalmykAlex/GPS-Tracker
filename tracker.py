@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import serial
+import time
 import threading
 import RPi.GPIO as GPIO
 
@@ -26,11 +27,15 @@ def read_card(event, out_queue):
             card_id, info = reader.read()
             out_queue.put(card_id)
             event.set()
-        finally:
+            time.sleep(5)
+        except Exception as err:
+            # TODO: log exception
             GPIO.cleanup()
 
 
 if __name__ == '__main__':
+    journey_state = False
+
     card_id_queue = Queue()
     read_card_event = threading.Event()
     read_card_thread = threading.Thread(target=read_card,
@@ -39,7 +44,13 @@ if __name__ == '__main__':
     read_card_thread.start()
 
     while True:
+        print('GPS data processing')
+        time.sleep(1)
+
         if read_card_event.is_set():
             print('CARD READ!')
+            journey_state = not journey_state
             if not card_id_queue.empty():
                 card_id = card_id_queue.get()
+                print('Journey State: {}\nLast card ID validated: {}'.format(journey_state,card_id))
+
