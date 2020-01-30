@@ -1,1 +1,6 @@
+geographiclib==1.50
+geopy==1.20.0
+mfrc522==0.0.7
 pyserial==3.4
+RPi.GPIO==0.7.0
+spidev==3.4
