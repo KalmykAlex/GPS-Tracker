@@ -61,75 +61,76 @@ if __name__ == '__main__':
 
     try:
         logger.info('Tracker script started.')
-        with serial.Serial(port) as ser:
-            ser.reset_input_buffer()
+        while True: # to run even if a port disconnect error is raised
+            with serial.Serial(port) as ser:
+                ser.reset_input_buffer()
 
-            while True:
+                while True:
 
-                # Read from GPS Sensor and log info
-                gps_raw_data = ser.readline()
+                    # Read from GPS Sensor and log info
+                    gps_raw_data = ser.readline()
 
-                if gps_raw_data[3:6] == b'RMC':
-                    try:
-                        gps_data = str(gps_raw_data).split(',')
-                        lat = round(float(gps_data[3][:2]) + float(gps_data[3][2:])/60, 6)
-                        lon = round(float(gps_data[5][:3]) + float(gps_data[5][3:])/60, 6)
-                        _date = '20' + gps_data[9][4:6] + '-' + gps_data[9][2:4] + '-' + gps_data[9][:2]
-                        _time = gps_data[1][:2] + ':' + gps_data[1][2:4] + ':' + gps_data[1][4:6]
-                        timestamp = _date + 'T' + _time + 'Z'
-                    except Exception as err:
-                        # TODO: flash red led to indicate weak GPS signal
-                        logger.error('Weak GPS signal! Waiting for stronger signal. Python error: {}'.format(err))
-                        ser.reset_input_buffer()
-                    else:
-                        # TODO: turn on green led to indicate good GPS signal
-                        # calculate the distance between 2 consecutive coordinates
-                        if journey_state:
-                            last_two_coordinates.append([lat, lon])
+                    if gps_raw_data[3:6] == b'RMC':
+                        try:
+                            gps_data = str(gps_raw_data).split(',')
+                            lat = round(float(gps_data[3][:2]) + float(gps_data[3][2:])/60, 6)
+                            lon = round(float(gps_data[5][:3]) + float(gps_data[5][3:])/60, 6)
+                            _date = '20' + gps_data[9][4:6] + '-' + gps_data[9][2:4] + '-' + gps_data[9][:2]
+                            _time = gps_data[1][:2] + ':' + gps_data[1][2:4] + ':' + gps_data[1][4:6]
+                            timestamp = _date + 'T' + _time + 'Z'
+                        except Exception as err:
+                            # TODO: flash red led to indicate weak GPS signal
+                            logger.error('Weak GPS signal! Waiting for stronger signal. Python error: {}'.format(err))
+                            ser.reset_input_buffer()
                         else:
-                            last_two_coordinates.clear() # clear list when not in journey
+                            # TODO: turn on green led to indicate good GPS signal
+                            # calculate the distance between 2 consecutive coordinates
+                            if journey_state:
+                                last_two_coordinates.append([lat, lon])
+                            else:
+                                last_two_coordinates.clear() # clear list when not in journey
 
-                        if len(last_two_coordinates) == 2:
-                            delta_distance = geodesic(last_two_coordinates[0], last_two_coordinates[1]).m
-                            print(delta_distance)
-                            if delta_distance > 1:
-                                total_distance = round(total_distance + delta_distance, 2)
-                            del last_two_coordinates[0]
+                            if len(last_two_coordinates) == 2:
+                                delta_distance = geodesic(last_two_coordinates[0], last_two_coordinates[1]).m
+                                print(delta_distance)
+                                if delta_distance > 1:
+                                    total_distance = round(total_distance + delta_distance, 2)
+                                del last_two_coordinates[0]
 
-                        # log information in CSV format into a logfile
-                        logfile = open(BASE_DIR + 'gps_logs/logdata-{}.log'.format(_date), 'a+')
+                            # log information in CSV format into a logfile
+                            logfile = open(BASE_DIR + 'gps_logs/logdata-{}.log'.format(_date), 'a+')
 
-                        if journey_state:
-                            logfile.write('{}, {}, {}, {}\n'.format(timestamp, lat, lon, total_distance))
-                        print('{}, {}, {}, {}, {}'.format(timestamp, lat, lon, journey_state, total_distance))
-                        logfile.close()
+                            if journey_state:
+                                logfile.write('{}, {}, {}, {}\n'.format(timestamp, lat, lon, total_distance))
+                            logfile.close()
 
-                        # Verifying correct card validation
-                        if read_card_event.is_set():
-                            read_card_event.clear()
+                            # Verifying correct card validation
+                            if read_card_event.is_set():
+                                read_card_event.clear()
 
-                            try:
-                                card_id = str(card_id_queue.get(block=False))
+                                try:
+                                    card_id = str(card_id_queue.get(block=False))
 
-                                if card_id not in card_db:
-                                    # TODO: ring buzzer and flash RED LED to indicate invalid card read
-                                    logger.warning('RC522: Invalid Card! ID: {}'.format(card_id))
-                                    logger.debug('ringing buzzer and flashing red led because card not valid') # TODO: remove after implemented
-                                else:
-                                    if not journey_state:
-                                        journey_state = True
-                                        journey_card = card_id
+                                    if card_id not in card_db:
+                                        # TODO: ring buzzer and flash RED LED to indicate invalid card read
+                                        logger.warning('RC522: Invalid Card! ID: {}'.format(card_id))
+                                        logger.debug('ringing buzzer and flashing red led because card not valid') # TODO: remove after implemented
                                     else:
-                                        if journey_card == card_id:
-                                            journey_state = False
+                                        if not journey_state:
+                                            journey_state = True
+                                            journey_card = card_id
                                         else:
-                                            # TODO: ring buzzer and flash RED LED to indicate invalid card read for end of journey
-                                            logger.warning('RC522: Invalid card to end journey! ID: {} and needed ID: {}'.format(card_id, journey_card))
-                                            logger.debug('ringing buzzer and flashing red led because needed card {} to end journey'.format(journey_card)) # TODO: remove after implemented
+                                            if journey_card == card_id:
+                                                journey_state = False
+                                            else:
+                                                # TODO: ring buzzer and flash RED LED to indicate invalid card read for end of journey
+                                                logger.warning('RC522: Invalid card to end journey! ID: {} and needed ID: {}'.format(card_id, journey_card))
+                                                logger.debug('ringing buzzer and flashing red led because needed card {} to end journey'.format(journey_card)) # TODO: remove after implemented
 
-                                logger.info('Journey State: {}. Last card ID validated: {}'.format(journey_state,card_id))
+                                    logger.info('Journey State: {}. Last card ID validated: {}'.format(journey_state,card_id))
 
-                            except queue.Empty:
-                                pass
+                                except queue.Empty as err:
+                                    logger.error('Card ID queue is empty. Reason: {}'.format(err))
     except IOError as err:
         logger.error(err)
+        time.sleep(3) # Waiting 3 seconds for GPS device to reconnect
