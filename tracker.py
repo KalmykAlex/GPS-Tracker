@@ -92,7 +92,6 @@ if __name__ == '__main__':
 
                             if len(last_two_coordinates) == 2:
                                 delta_distance = geodesic(last_two_coordinates[0], last_two_coordinates[1]).m
-                                print(delta_distance)
                                 if delta_distance > 1:
                                     total_distance = round(total_distance + delta_distance, 2)
                                 del last_two_coordinates[0]
