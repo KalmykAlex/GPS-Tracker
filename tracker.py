@@ -56,12 +56,14 @@ if __name__ == '__main__':
     # Worker Thread, eventing and queue initialization
     card_id_queue = queue.Queue()
     read_card_event = threading.Event()
-    read_card_thread = threading.Thread(target=read_card, args=[read_card_event, card_id_queue], daemon=True)
+    read_card_thread = threading.Thread(target=read_card,
+                                        args=[read_card_event, card_id_queue],
+                                        daemon=True)
     read_card_thread.start()
 
     try:
         logger.info('Tracker script started.')
-        while True: # to run even if a port disconnect error is raised
+        while True:  # to run even if a port disconnect error is raised
             with serial.Serial(port) as ser:
                 ser.reset_input_buffer()
 
@@ -97,7 +99,7 @@ if __name__ == '__main__':
                                 del last_two_coordinates[0]
 
                             # log information in CSV format into a logfile
-                            logfile = open(BASE_DIR + 'gps_logs/logdata-{}.log'.format(_date), 'a+')
+                            logfile = open(BASE_DIR + 'gps_logs/logdata_{}.log'.format(_date), 'a+')
 
                             if journey_state:
                                 logfile.write('{}, {}, {}, {}\n'.format(timestamp, lat, lon, total_distance))
@@ -113,7 +115,8 @@ if __name__ == '__main__':
                                     if card_id not in card_db:
                                         # TODO: ring buzzer and flash RED LED to indicate invalid card read
                                         logger.warning('RC522: Invalid Card! ID: {}'.format(card_id))
-                                        logger.debug('ringing buzzer and flashing red led because card not valid') # TODO: remove after implemented
+                                        # TODO: remove following line after implementation
+                                        logger.debug('Ringing buzzer and flashing red led because card not valid')
                                     else:
                                         if not journey_state:
                                             journey_state = True
@@ -122,14 +125,22 @@ if __name__ == '__main__':
                                             if journey_card == card_id:
                                                 journey_state = False
                                             else:
-                                                # TODO: ring buzzer and flash RED LED to indicate invalid card read for end of journey
-                                                logger.warning('RC522: Invalid card to end journey! ID: {} and needed ID: {}'.format(card_id, journey_card))
-                                                logger.debug('ringing buzzer and flashing red led because needed card {} to end journey'.format(journey_card)) # TODO: remove after implemented
+                                                # TODO: ring buzzer and flash RED LED to
+                                                #  indicate invalid card read for end of journey
+                                                logger.warning('RC522: Invalid card to end journey! '
+                                                               'ID: {} and needed ID: {}'
+                                                               .format(card_id, journey_card))
+                                                # TODO: remove following line after implementation
+                                                logger.debug('Ringing buzzer and flashing red led '
+                                                             'because needed card {} to end journey'
+                                                             .format(journey_card))
 
-                                    logger.info('Journey State: {}. Last card ID validated: {}'.format(journey_state,card_id))
+                                    logger.info('Journey State: {}. '
+                                                'Last card ID validated: {}'
+                                                .format(journey_state, card_id))
 
                                 except queue.Empty as err:
                                     logger.error('Card ID queue is empty. Reason: {}'.format(err))
     except IOError as err:
         logger.error(err)
-        time.sleep(3) # Waiting 3 seconds for GPS device to reconnect
+        time.sleep(3)  # Waiting 3 seconds for GPS device to reconnect

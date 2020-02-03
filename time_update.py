@@ -5,8 +5,10 @@ import subprocess
 from serial.tools import list_ports
 
 BASE_DIR = '/home/pi/trackman/GPS-Tracker/'
+WAIT_TIME = 5  # seconds
 logging.basicConfig(filename=BASE_DIR+'logs/time_update.log', level=logging.DEBUG)
 logger = logging.getLogger()
+
 
 def get_gps_port(manufacturer):
     """Gets the serial port on which the GPS sensor is transmitting data."""
@@ -31,7 +33,8 @@ if __name__ == '__main__':
                     if raw_data[3:6] == b'RMC':
                         data = str(raw_data).split(',')
 
-                        if data[1] and data[9]: # check to see if gps data is there (signal strong ernough)
+                        # check to see if gps data is present (signal strong enough)
+                        if data[1] and data[9]:
                             date = data[9][4:6] + '-' + data[9][2:4] + '-' + data[9][:2]
                             time = data[1][:2] + ':' + data[1][2:4] + ':' + data[1][4:6]
                             timestamp = date + ' ' + time
@@ -44,12 +47,13 @@ if __name__ == '__main__':
                                 logger.info('System date has been set to: {}'.format(timestamp))
                                 break
                         else:
-                            logger.warning('GPS Signal weak. Waiting for stronger GPS signal...')
-                            time.sleep(1) # Waiting for better GPS signal
+                            logger.warning('GPS Signal weak. Waiting {} '
+                                           'seconds for stronger GPS signal...'.format(WAIT_TIME))
+                            time.sleep(WAIT_TIME)  # Waiting for better GPS signal
         except IOError as err:
             logger.error(err)
             logger.info('GPS Signal not found. Waiting for GPS signal...')
-            time.sleep(1) # Waiting for GPS signal
+            time.sleep(WAIT_TIME)  # Waiting for GPS signal
         else:
             logger.info('GPS Time update finished successfully.')
             break
