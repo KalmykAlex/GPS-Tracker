@@ -19,12 +19,12 @@ Below are all the devices and parts that are needed:
 ### Wiring the system
 
 The __RFID RC522__ has 8 ports and 7 of those we will wire to the Raspberry Pi's GPIO pins as following:
-__SDA__(Serial Data Signal) to __Pin 24__, __SCK__(Serial Clock) to __Pin 23__, __MOSI__(Master Out Slave In) to __Pin 19,
+__SDA__(Serial Data Signal) to __Pin 24__, __SCK__(Serial Clock) to __Pin 23__, __MOSI__(Master Out Slave In) to __Pin 19__,
 __MISO__(Master In Slave Out) to __Pin 21__, __IRQ__(Interrupt Request) is left unconnected, __GND__(Ground Power) to __Pin 6__,
 __RST__(Reset-Circuit) to __Pin 22__, and __3.3V__(Power In) to __Pin 1__.
 
 The __USB GPS Sensor__ will be connected to one of the Raspberry Pi's USB ports. The Raspbian OS will map that USB port
-to a file in /dev/ folder.
+to a file in _/dev/_ folder.
 
 ### Setting up the Raspbian
 
@@ -71,7 +71,7 @@ help us calculate the distance between GPS coordinates.
 
 #### Crontab and Launcher.sh
 
-At boot time a crontab is configured to stard a _launcher.sh_ script that will in turn launch our python
+At boot time a crontab is configured to stard a _launcher.sh_ script that will in turn start our python
 scripts. To setup the crontab simply type the following commands:
 
     sudo crontab -e
