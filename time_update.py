@@ -6,7 +6,9 @@ from serial.tools import list_ports
 
 BASE_DIR = '/home/pi/trackman/GPS-Tracker/'
 WAIT_TIME = 5  # seconds
-logging.basicConfig(filename=BASE_DIR+'logs/time_update.log', level=logging.DEBUG)
+logging.basicConfig(filename=BASE_DIR+'logs/time_update.log',
+                    format='%(levelname)s: %(message)s',
+                    level=logging.DEBUG)
 logger = logging.getLogger()
 
 
@@ -17,7 +19,7 @@ def get_gps_port(manufacturer):
             if manufacturer in port.manufacturer:
                 return '/dev/' + port.name
     except TypeError:
-        logger.error('Port for {} device not found'.format(manufacturer))
+        logger.error('Port for {} device not found.'.format(manufacturer))
 
 
 if __name__ == '__main__':
@@ -48,11 +50,10 @@ if __name__ == '__main__':
                                 break
                         else:
                             logger.warning('GPS Signal weak. Waiting {} '
-                                           'seconds for stronger GPS signal...'.format(WAIT_TIME))
+                                           'second(s) for stronger GPS signal...'.format(WAIT_TIME))
                             time.sleep(WAIT_TIME)  # Waiting for better GPS signal
-        except IOError as err:
-            logger.error(err)
-            logger.info('GPS Signal not found. Waiting for GPS signal...')
+        except IOError:
+            logger.warning('GPS Signal not found. Waiting {} second(s) for GPS signal...'.format(WAIT_TIME))
             time.sleep(WAIT_TIME)  # Waiting for GPS signal
         else:
             logger.info('GPS Time update finished successfully.')
