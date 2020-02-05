@@ -101,6 +101,7 @@ if __name__ == '__main__':
                             time.sleep(WAIT_TIME)
                         else:
                             # TODO: turn on green led to indicate good GPS signal
+
                             # calculate the distance between 2 consecutive coordinates
                             if journey_state:
                                 last_two_coordinates.append([lat, lon])
@@ -118,6 +119,7 @@ if __name__ == '__main__':
                                 else:
                                     del last_two_coordinates[1]
 
+                            # Log route data only if in journey
                             if journey_state:
                                 with open(BASE_DIR + 'gps_logs/routes/route_{}_{}.log'.format(route_id, user_id), 'a') as routelog:
                                     print('{}, {}, {}, {}'.format(timestamp, lat, lon, total_distance))  # TODO: remove
@@ -149,50 +151,54 @@ if __name__ == '__main__':
                                                 ('lon_start', lon)
                                             ])
 
-                                            # log information in CSV format into a logfile
+                                            #
                                             try:
                                                 with open(BASE_DIR + 'gps_logs/routes.log') as global_routelog:
                                                     last_route_id = json.loads(list(global_routelog)[-1])['route_id']  # get last route id from routelog
                                                     route_id = last_route_id + 1
                                                     print(last_route_id, route_id)  # TODO: remove
-                                                    # making sure our system is failproof on power outage
-                                                    if route_id in [int(_.split('_')[1]) for _ in os.listdir(BASE_DIR + 'gps_logs/routes/')]:
-                                                        print('Failed script termination detected. Rebuilding route parameters.')  # TODO: remove
-                                                        logger.warning('Failed script termination detected. Rebuilding route parameters.')
 
-                                                        # check for same journey_card validation
-                                                        if user_id != glob.glob(BASE_DIR + 'gps_logs/routes/route_{}_*'.format(route_id))[0].split('/')[-1][8:-4]:
-                                                            # TODO: flash red led and ring buzzer to indicat wrong card validation
-                                                            print('Wrong card validation after recovering from unexpected reboot.')  # TODO: remove
-                                                            logger.debug('Wrong card validation after recovering from unexpected reboot.')
-                                                            journey_state = False
-
-                                                        with open(BASE_DIR + 'gps_logs/routes/route_{}_{}.log'.format(route_id, user_id)) as file:
-                                                            lines = file.read().splitlines()
-                                                            total_distance = float(lines[-1].split(',')[-1])
-                                                            route.update([
-                                                                ('timestamp_start', lines[0].split(',')[0]),
-                                                                ('lat_start', lines[0].split(',')[1]),
-                                                                ('lon_start', lines[0].split(',')[2])
-                                                            ])
-                                                            print(lines[-1])  # TODO: remove
-                                                            last_lat = float(lines[-1].split(',')[1])
-                                                            last_lon = float(lines[-1].split(',')[2])
-                                                            last_two_coordinates = [[last_lat, last_lon]]
-                                                            print(last_two_coordinates)  # TODO: remove
-                                                            print('----------', total_distance)  #TODO: remove
-
-                                            except FileNotFoundError as err:
+                                            except Exception as err:
                                                 print(err)  # TODO: remove
                                                 route_id = 1
                                             finally:
+                                                # TODO: move up outside of the card validation if clause
+                                                # Making sure the system is failproof on power outage
+                                                if route_id in [int(_.split('_')[1]) for _ in os.listdir(BASE_DIR + 'gps_logs/routes/')]:
+                                                    print('Unexpected Script termination detected. Rebuilding route parameters.')  # TODO: remove
+                                                    logger.warning('Unexpected Script termination detected. Rebuilding route parameters.')
+
+                                                    # Automatically resume the journey of last user_id validated card
+                                                    user_id = glob.glob(BASE_DIR + 'gps_logs/routes/route_{}_*'.format(route_id))[0].split('/')[-1][8:-4]
+                                                    # OR: validate card again to resume the journey
+                                                    # and check for same journey_card validation
+                                                    # if user_id != glob.glob(BASE_DIR + 'gps_logs/routes/route_{}_*'.format(route_id))[0].split('/')[-1][8:-4]:
+                                                    #     TODO: flash red led and ring buzzer to indicat wrong card validation
+                                                    #     print('Wrong card validation after recovering from unexpected reboot.')  # TODO: remove
+                                                    #     logger.debug('Wrong card validation after recovering from unexpected reboot.')
+                                                    #     journey_state = False
+
+                                                    # Rebuilding Route Parameters
+                                                    with open(BASE_DIR + 'gps_logs/routes/route_{}_{}.log'.format(route_id, user_id) as file:
+                                                        lines = file.read().splitlines()
+                                                        total_distance = float(lines[-1].split(',')[-1])
+                                                        route.update([
+                                                            ('timestamp_start', lines[0].split(',')[0]),
+                                                            ('lat_start', lines[0].split(',')[1]),
+                                                            ('lon_start', lines[0].split(',')[2]),
+                                                        ])
+                                                        # Resuming Distance Calculation
+                                                        last_lat = float(lines[-1].split(',')[1])
+                                                        last_lon = float(lines[-1].split(',')[2])
+                                                        last_two_coordinates = [[last_lat, last_lon]]
+                                                # move untill here
                                                 route.update({'route_id': route_id})
 
                                         else:
                                             if user_id == card_id:
                                                 journey_state = False  # ending of journey
 
-                                                # journaling stop route parameters
+                                                # Journaling Stop Route Parameters
                                                 route.update([
                                                     ('timestamp_stop', timestamp),
                                                     ('lat_stop', lat),
@@ -202,6 +208,7 @@ if __name__ == '__main__':
 
                                                 total_distance = 0  # resetting total distance at end of journey
 
+                                                # Creating Global Routes Logging File
                                                 with open(BASE_DIR + 'gps_logs/routes.log', 'a') as global_routelog:
                                                     global_routelog.write(json.dumps(route) + '\n')
                                             else:
