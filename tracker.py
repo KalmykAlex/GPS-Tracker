@@ -127,6 +127,19 @@ if __name__ == '__main__':
                                     routelog.write('{}, {}, {}, {}\n'.format(timestamp, lat, lon, total_distance))
                             else:
                                 # Making sure the System is Fail Proof on Power Outage
+                                try:
+                                    with open(BASE_DIR + 'gps_logs/routes.log') as global_routelog:
+                                        # get last route id from global routelog
+                                        last_route_id = json.loads(list(global_routelog)[-1])['route_id']
+                                        route_id = last_route_id + 1
+                                        print(last_route_id, route_id)  # TODO: remove
+
+                                except Exception as err:
+                                    print(err)  # TODO: remove
+                                    route_id = 1
+                                finally:
+                                    route.update({'route_id': route_id})
+
                                 if route_id in [int(_.split('_')[1]) for _ in os.listdir(BASE_DIR + 'gps_logs/routes/')]:
                                     print('Unexpected Script termination detected. Rebuilding route parameters.')  # TODO: remove
                                     logger.warning('Unexpected Script termination detected. '
@@ -180,20 +193,6 @@ if __name__ == '__main__':
                                             ('lat_start', lat),
                                             ('lon_start', lon)
                                         ])
-
-                                        # TODO: move up
-                                        try:
-                                            with open(BASE_DIR + 'gps_logs/routes.log') as global_routelog:
-                                                # get last route id from global routelog
-                                                last_route_id = json.loads(list(global_routelog)[-1])['route_id']
-                                                route_id = last_route_id + 1
-                                                print(last_route_id, route_id)  # TODO: remove
-
-                                        except Exception as err:
-                                            print(err)  # TODO: remove
-                                            route_id = 1
-                                        finally:
-                                            route.update({'route_id': route_id})
 
                                     else:
                                         if user_id == card_id:
