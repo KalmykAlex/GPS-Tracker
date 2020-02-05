@@ -181,7 +181,7 @@ if __name__ == '__main__':
                                             ('lon_start', lon)
                                         ])
 
-                                        #
+                                        # TODO: move up
                                         try:
                                             with open(BASE_DIR + 'gps_logs/routes.log') as global_routelog:
                                                 # get last route id from global routelog
@@ -193,7 +193,6 @@ if __name__ == '__main__':
                                             print(err)  # TODO: remove
                                             route_id = 1
                                         finally:
-
                                             route.update({'route_id': route_id})
 
                                     else:
