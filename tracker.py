@@ -132,28 +132,21 @@ if __name__ == '__main__':
                                         # get last route id from global routelog
                                         last_route_id = json.loads(list(global_routelog)[-1])['route_id']
                                         route_id = last_route_id + 1
-                                        print(last_route_id, route_id)  # TODO: remove
+                                        print('Last route ID: {}. Current route ID: {}'.format(last_route_id, route_id))  # TODO: remove
 
-                                except Exception as err:
-                                    print(err)  # TODO: remove
+                                except Exception:
                                     route_id = 1
                                 finally:
                                     route.update({'route_id': route_id})
 
                                 if route_id in [int(_.split('_')[1]) for _ in os.listdir(BASE_DIR + 'gps_logs/routes/')]:
+                                    journey_state = True
                                     print('Unexpected Script termination detected. Rebuilding route parameters.')  # TODO: remove
                                     logger.warning('Unexpected Script termination detected. '
                                                    'Rebuilding route parameters.')
 
                                     # Automatically resume the journey of last user_id validated card
                                     user_id = glob.glob(BASE_DIR + 'gps_logs/routes/route_{}_*'.format(route_id))[0].split('/')[-1][8:-4]
-                                    # OR: validate card again to resume the journey
-                                    # and check for same journey_card validation
-                                    # if user_id != glob.glob(BASE_DIR + 'gps_logs/routes/route_{}_*'.format(route_id))[0].split('/')[-1][8:-4]:
-                                    #     TODO: flash red led and ring buzzer to indicat wrong card validation
-                                    #     print('Wrong card validation after recovering from unexpected reboot.')  # TODO: remove
-                                    #     logger.debug('Wrong card validation after recovering from unexpected reboot.')
-                                    #     journey_state = False
 
                                     # Rebuilding Route Parameters
                                     with open(BASE_DIR + 'gps_logs/routes/route_{}_{}.log'.format(route_id, user_id)) as file:
