@@ -120,116 +120,116 @@ if __name__ == '__main__':
                                     del last_two_coordinates[1]
 
                             # Log route data only if in journey
+                            # else check for unexpected script termination
                             if journey_state:
                                 with open(BASE_DIR + 'gps_logs/routes/route_{}_{}.log'.format(route_id, user_id), 'a') as routelog:
                                     print('{}, {}, {}, {}'.format(timestamp, lat, lon, total_distance))  # TODO: remove
                                     routelog.write('{}, {}, {}, {}\n'.format(timestamp, lat, lon, total_distance))
+                            else:
+                                # Making sure the System is Fail Proof on Power Outage
+                                if route_id in [int(_.split('_')[1]) for _ in os.listdir(BASE_DIR + 'gps_logs/routes/')]:
+                                    print('Unexpected Script termination detected. Rebuilding route parameters.')  # TODO: remove
+                                    logger.warning('Unexpected Script termination detected. '
+                                                   'Rebuilding route parameters.')
+
+                                    # Automatically resume the journey of last user_id validated card
+                                    user_id = glob.glob(BASE_DIR + 'gps_logs/routes/route_{}_*'.format(route_id))[0].split('/')[-1][8:-4]
+                                    # OR: validate card again to resume the journey
+                                    # and check for same journey_card validation
+                                    # if user_id != glob.glob(BASE_DIR + 'gps_logs/routes/route_{}_*'.format(route_id))[0].split('/')[-1][8:-4]:
+                                    #     TODO: flash red led and ring buzzer to indicat wrong card validation
+                                    #     print('Wrong card validation after recovering from unexpected reboot.')  # TODO: remove
+                                    #     logger.debug('Wrong card validation after recovering from unexpected reboot.')
+                                    #     journey_state = False
+
+                                    # Rebuilding Route Parameters
+                                    with open(BASE_DIR + 'gps_logs/routes/route_{}_{}.log'.format(route_id, user_id)) as file:
+                                        lines = file.read().splitlines()
+                                        total_distance = float(lines[-1].split(',')[-1])
+                                        route.update([
+                                            ('timestamp_start', lines[0].split(',')[0]),
+                                            ('lat_start', lines[0].split(',')[1]),
+                                            ('lon_start', lines[0].split(',')[2]),
+                                        ])
+                                        # Resuming Distance Calculation
+                                        last_lat = float(lines[-1].split(',')[1])
+                                        last_lon = float(lines[-1].split(',')[2])
+                                        last_two_coordinates = [[last_lat, last_lon]]
 
                             # Verifying correct card validation
                             if read_card_event.is_set():
                                 read_card_event.clear()
 
-                                try:
-                                    card_id = str(card_id_queue.get(block=False))
+                                card_id = str(card_id_queue.get(block=False))
 
-                                    if card_id not in card_db:
-                                        # TODO: ring buzzer and flash RED LED to indicate invalid card read
-                                        print('- Invalid Card Read! ID: {}'.format(card_id))  # TODO: remove
-                                        logger.warning('RC522: Invalid Card! ID: {}'.format(card_id))
-                                        # TODO: remove following line after implementation
-                                        logger.debug('Ringing buzzer and flashing red led because card not valid')
+                                if card_id not in card_db:
+                                    # TODO: ring buzzer and flash RED LED to indicate invalid card read
+                                    print('- Invalid Card Read! ID: {}'.format(card_id))  # TODO: remove
+                                    logger.warning('RC522: Invalid Card! ID: {}'.format(card_id))
+                                    # TODO: remove following line after implementation
+                                    logger.debug('Ringing buzzer and flashing red led because card not valid')
+                                else:
+                                    if not journey_state:
+                                        journey_state = True  # beggining of journey
+                                        user_id = card_id
+
+                                        # journaling start route parameters
+                                        route.update([
+                                            ('user_id', user_id),
+                                            ('timestamp_start', timestamp),
+                                            ('lat_start', lat),
+                                            ('lon_start', lon)
+                                        ])
+
+                                        #
+                                        try:
+                                            with open(BASE_DIR + 'gps_logs/routes.log') as global_routelog:
+                                                # get last route id from global routelog
+                                                last_route_id = json.loads(list(global_routelog)[-1])['route_id']
+                                                route_id = last_route_id + 1
+                                                print(last_route_id, route_id)  # TODO: remove
+
+                                        except Exception as err:
+                                            print(err)  # TODO: remove
+                                            route_id = 1
+                                        finally:
+
+                                            route.update({'route_id': route_id})
+
                                     else:
-                                        if not journey_state:
-                                            journey_state = True  # beggining of journey
-                                            user_id = card_id
+                                        if user_id == card_id:
+                                            journey_state = False  # ending of journey
 
-                                            # journaling start route parameters
+                                            # Journaling Stop Route Parameters
                                             route.update([
-                                                ('user_id', user_id),
-                                                ('timestamp_start', timestamp),
-                                                ('lat_start', lat),
-                                                ('lon_start', lon)
+                                                ('timestamp_stop', timestamp),
+                                                ('lat_stop', lat),
+                                                ('lon_stop', lon),
+                                                ('distance', round(total_distance))  # TODO: m to km
                                             ])
 
-                                            #
-                                            try:
-                                                with open(BASE_DIR + 'gps_logs/routes.log') as global_routelog:
-                                                    last_route_id = json.loads(list(global_routelog)[-1])['route_id']  # get last route id from routelog
-                                                    route_id = last_route_id + 1
-                                                    print(last_route_id, route_id)  # TODO: remove
+                                            total_distance = 0  # resetting total distance at end of journey
 
-                                            except Exception as err:
-                                                print(err)  # TODO: remove
-                                                route_id = 1
-                                            finally:
-                                                # TODO: move up outside of the card validation if clause
-                                                # Making sure the system is failproof on power outage
-                                                if route_id in [int(_.split('_')[1]) for _ in os.listdir(BASE_DIR + 'gps_logs/routes/')]:
-                                                    print('Unexpected Script termination detected. Rebuilding route parameters.')  # TODO: remove
-                                                    logger.warning('Unexpected Script termination detected. Rebuilding route parameters.')
-
-                                                    # Automatically resume the journey of last user_id validated card
-                                                    user_id = glob.glob(BASE_DIR + 'gps_logs/routes/route_{}_*'.format(route_id))[0].split('/')[-1][8:-4]
-                                                    # OR: validate card again to resume the journey
-                                                    # and check for same journey_card validation
-                                                    # if user_id != glob.glob(BASE_DIR + 'gps_logs/routes/route_{}_*'.format(route_id))[0].split('/')[-1][8:-4]:
-                                                    #     TODO: flash red led and ring buzzer to indicat wrong card validation
-                                                    #     print('Wrong card validation after recovering from unexpected reboot.')  # TODO: remove
-                                                    #     logger.debug('Wrong card validation after recovering from unexpected reboot.')
-                                                    #     journey_state = False
-
-                                                    # Rebuilding Route Parameters
-                                                    with open(BASE_DIR + 'gps_logs/routes/route_{}_{}.log'.format(route_id, user_id) as file:
-                                                        lines = file.read().splitlines()
-                                                        total_distance = float(lines[-1].split(',')[-1])
-                                                        route.update([
-                                                            ('timestamp_start', lines[0].split(',')[0]),
-                                                            ('lat_start', lines[0].split(',')[1]),
-                                                            ('lon_start', lines[0].split(',')[2]),
-                                                        ])
-                                                        # Resuming Distance Calculation
-                                                        last_lat = float(lines[-1].split(',')[1])
-                                                        last_lon = float(lines[-1].split(',')[2])
-                                                        last_two_coordinates = [[last_lat, last_lon]]
-                                                # move untill here
-                                                route.update({'route_id': route_id})
-
+                                            # Creating Global Routes Logging File
+                                            with open(BASE_DIR + 'gps_logs/routes.log', 'a') as global_routelog:
+                                                global_routelog.write(json.dumps(route) + '\n')
                                         else:
-                                            if user_id == card_id:
-                                                journey_state = False  # ending of journey
+                                            # TODO: ring buzzer and flash RED LED to
+                                            #  indicate invalid card read for end of journey
+                                            print('- Wrong Card Read! ID {}'.format(card_id))  # TODO: remove
+                                            logger.warning('RC522: Invalid card to end journey! '
+                                                           'ID: {} and needed ID: {}'
+                                                           .format(card_id, user_id))
+                                            # TODO: remove following line after implementation
+                                            logger.debug('Ringing buzzer and flashing red led '
+                                                         'because needed card {} to end journey.'
+                                                         .format(user_id))
 
-                                                # Journaling Stop Route Parameters
-                                                route.update([
-                                                    ('timestamp_stop', timestamp),
-                                                    ('lat_stop', lat),
-                                                    ('lon_stop', lon),
-                                                    ('distance', round(total_distance))  # TODO: m to km
-                                                ])
+                                print('-- Journey State: {}.'.format(journey_state))
+                                logger.info('Journey State: {}. '
+                                            'Last card ID validated: {}'
+                                            .format(journey_state, card_id))
 
-                                                total_distance = 0  # resetting total distance at end of journey
-
-                                                # Creating Global Routes Logging File
-                                                with open(BASE_DIR + 'gps_logs/routes.log', 'a') as global_routelog:
-                                                    global_routelog.write(json.dumps(route) + '\n')
-                                            else:
-                                                # TODO: ring buzzer and flash RED LED to
-                                                #  indicate invalid card read for end of journey
-                                                print('- Wrong Card Read! ID {}'.format(card_id))  # TODO: remove
-                                                logger.warning('RC522: Invalid card to end journey! '
-                                                               'ID: {} and needed ID: {}'
-                                                               .format(card_id, user_id))
-                                                # TODO: remove following line after implementation
-                                                logger.debug('Ringing buzzer and flashing red led '
-                                                             'because needed card {} to end journey.'
-                                                             .format(user_id))
-
-                                    print('-- Journey State: {}.'.format(journey_state))
-                                    logger.info('Journey State: {}. '
-                                                'Last card ID validated: {}'
-                                                .format(journey_state, card_id))
-
-                                except queue.Empty as err:
-                                    logger.error('Card ID queue is empty. Reason: {}.'.format(err))
         except IOError:
             # TODO: flash red led to indicate lack of GPS sensor
             print('GPS signal not found. Waiting {} second(s) for GPS signal...'.format(WAIT_TIME))

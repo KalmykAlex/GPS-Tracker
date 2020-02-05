@@ -1,0 +1,4 @@
+venv/*
+.idea/*
+logs/*
+gps_logs/*
