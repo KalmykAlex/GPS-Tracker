@@ -104,6 +104,7 @@ if __name__ == '__main__':
                             # calculate the distance between 2 consecutive coordinates
                             if journey_state:
                                 last_two_coordinates.append([lat, lon])
+                                print(last_two_coordinates)  # TODO: remove
                             else:
                                 last_two_coordinates.clear() # clear list when not in journey
 
@@ -158,10 +159,8 @@ if __name__ == '__main__':
                                                     if route_id in [int(_.split('_')[1]) for _ in os.listdir(BASE_DIR + 'gps_logs/routes/')]:
                                                         print('Failed script termination detected. Rebuilding route parameters.')  # TODO: remove
                                                         logger.warning('Failed script termination detected. Rebuilding route parameters.')
-                                                        # check for same journey card validation
-                                                        print(user_id)
-                                                        print(glob.glob(BASE_DIR + 'gps_logs/routes/route_{}_*'.format(route_id))[0].split('/')[-1][8:-4])
 
+                                                        # check for same journey_card validation
                                                         if user_id != glob.glob(BASE_DIR + 'gps_logs/routes/route_{}_*'.format(route_id))[0].split('/')[-1][8:-4]:
                                                             # TODO: flash red led and ring buzzer to indicat wrong card validation
                                                             print('Wrong card validation after recovering from unexpected reboot.')  # TODO: remove
@@ -176,6 +175,11 @@ if __name__ == '__main__':
                                                                 ('lat_start', lines[0].split(',')[1]),
                                                                 ('lon_start', lines[0].split(',')[2])
                                                             ])
+                                                            print(lines[-1])  # TODO: remove
+                                                            last_lat = float(lines[-1].split(',')[1])
+                                                            last_lon = float(lines[-1].split(',')[2])
+                                                            last_two_coordinates = [[last_lat, last_lon]]
+                                                            print(last_two_coordinates)  # TODO: remove
                                                             print('----------', total_distance)  #TODO: remove
 
                                             except FileNotFoundError as err:
