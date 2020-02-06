@@ -18,7 +18,7 @@ from mfrc522 import SimpleMFRC522
 BASE_DIR = '/home/pi/trackman/GPS-Tracker/'
 
 # Logging configuration
-logging.basicConfig(filename=BASE_DIR+'logs/tracker.log',
+logging.basicConfig(filename=BASE_DIR+'logs/system_logs/tracker.log',
                     format='%(asctime)s: %(levelname)s: %(message)s ',
                     datefmt='%Y-%m-%dT%H:%M:%SZ',
                     level=logging.DEBUG)
@@ -53,17 +53,18 @@ def read_card(event, out_queue):
 
 if __name__ == '__main__':
 
+    print('Tracker script started.')  # TODO: remove
+    logger.info('Tracker script started.')
+
     # Variables initialization
     WAIT_TIME = 5  # seconds
+    gps_logs_folder = BASE_DIR + 'logs/gps_logs/'
     journey_state = False
     last_two_coordinates = []
     total_distance = 0
     route = {}
     #TODO: to replace with actual card ID's stored in a postgresql database
     card_db = ['780870559455', '142189814135']
-
-    # GPS COM port configuration
-    port = get_gps_port('u-blox')
 
     # Worker Thread, eventing and queue initialization
     card_id_queue = queue.Queue()
@@ -73,9 +74,11 @@ if __name__ == '__main__':
                                         daemon=True)
     read_card_thread.start()
 
-    print('Tracker script started.')  # TODO: remove
-    logger.info('Tracker script started.')
     while True:  # to run even if a port disconnect error is raised
+
+        # GPS COM port configuration
+        port = get_gps_port('u-blox')
+
         try:
             with serial.Serial(port) as ser:
                 ser.reset_input_buffer()
@@ -96,7 +99,7 @@ if __name__ == '__main__':
                         except Exception:
                             # TODO: flash red led to indicate weak GPS signal
                             print('Weak GPS signal! Waiting {} second(s) for stronger signal...'.format(WAIT_TIME))  # TODO: remove
-                            logger.error('Weak GPS signal! Waiting {} second(s) for stronger signal...'.format(WAIT_TIME))
+                            logger.warning('Weak GPS signal! Waiting {} second(s) for stronger signal...'.format(WAIT_TIME))
                             ser.reset_input_buffer()
                             time.sleep(WAIT_TIME)
                         else:
@@ -122,13 +125,15 @@ if __name__ == '__main__':
                             # Log route data only if in journey
                             # else check for unexpected script termination
                             if journey_state:
-                                with open(BASE_DIR + 'gps_logs/routes/route_{}_{}.log'.format(route_id, user_id), 'a') as routelog:
+                                with open(gps_logs_folder + 'routes/route_{}_{}.log'.format(route_id, user_id), 'a') as routelog:
                                     print('{}, {}, {}, {}'.format(timestamp, lat, lon, total_distance))  # TODO: remove
                                     routelog.write('{}, {}, {}, {}\n'.format(timestamp, lat, lon, total_distance))
+                                    routelog.flush()
+                                    os.fsync(routelog)
                             else:
                                 # Making sure the System is Fail Proof on Power Outage
                                 try:
-                                    with open(BASE_DIR + 'gps_logs/routes.log') as global_routelog:
+                                    with open(gps_logs_folder + 'routes.log') as global_routelog:
                                         # get last route id from global routelog
                                         last_route_id = json.loads(list(global_routelog)[-1])['route_id']
                                         route_id = last_route_id + 1
@@ -139,17 +144,17 @@ if __name__ == '__main__':
                                 finally:
                                     route.update({'route_id': route_id})
 
-                                if route_id in [int(_.split('_')[1]) for _ in os.listdir(BASE_DIR + 'gps_logs/routes/')]:
+                                if route_id in [int(_.split('_')[1]) for _ in os.listdir(gps_logs_folder + 'routes/')]:
                                     journey_state = True
                                     print('Unexpected Script termination detected. Rebuilding route parameters.')  # TODO: remove
                                     logger.warning('Unexpected Script termination detected. '
                                                    'Rebuilding route parameters.')
 
                                     # Automatically resume the journey of last user_id validated card
-                                    user_id = glob.glob(BASE_DIR + 'gps_logs/routes/route_{}_*'.format(route_id))[0].split('/')[-1][8:-4]
+                                    user_id = glob.glob(gps_logs_folder + 'routes/route_{}_*'.format(route_id))[0].split('/')[-1][8:-4]
 
                                     # Rebuilding Route Parameters
-                                    with open(BASE_DIR + 'gps_logs/routes/route_{}_{}.log'.format(route_id, user_id)) as file:
+                                    with open(gps_logs_folder + 'routes/route_{}_{}.log'.format(route_id, user_id)) as file:
                                         lines = file.read().splitlines()
                                         total_distance = float(lines[-1].split(',')[-1])
                                         route.update([
@@ -181,7 +186,6 @@ if __name__ == '__main__':
 
                                         # journaling start route parameters
                                         route.update([
-                                            ('user_id', user_id),
                                             ('timestamp_start', timestamp),
                                             ('lat_start', lat),
                                             ('lon_start', lon)
@@ -193,6 +197,7 @@ if __name__ == '__main__':
 
                                             # Journaling Stop Route Parameters
                                             route.update([
+                                                ('user_id', user_id),
                                                 ('timestamp_stop', timestamp),
                                                 ('lat_stop', lat),
                                                 ('lon_stop', lon),
@@ -202,7 +207,7 @@ if __name__ == '__main__':
                                             total_distance = 0  # resetting total distance at end of journey
 
                                             # Creating Global Routes Logging File
-                                            with open(BASE_DIR + 'gps_logs/routes.log', 'a') as global_routelog:
+                                            with open(gps_logs_folder + 'routes.log', 'a') as global_routelog:
                                                 global_routelog.write(json.dumps(route) + '\n')
                                         else:
                                             # TODO: ring buzzer and flash RED LED to
@@ -221,8 +226,9 @@ if __name__ == '__main__':
                                             'Last card ID validated: {}'
                                             .format(journey_state, card_id))
 
-        except IOError:
+        except IOError as err:
             # TODO: flash red led to indicate lack of GPS sensor
-            print('GPS signal not found. Waiting {} second(s) for GPS signal...'.format(WAIT_TIME))
+            print(err)  # TODO: remove
+            print('GPS signal not found. Waiting {} second(s) for GPS signal...'.format(WAIT_TIME))  # TODO: remove
             logger.warning('GPS signal not found. Waiting {} second(s) for GPS signal...'.format(WAIT_TIME))
             time.sleep(WAIT_TIME)  # Waiting for GPS device to reconnect

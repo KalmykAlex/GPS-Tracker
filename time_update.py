@@ -6,7 +6,8 @@ from serial.tools import list_ports
 
 BASE_DIR = '/home/pi/trackman/GPS-Tracker/'
 WAIT_TIME = 5  # seconds
-logging.basicConfig(filename=BASE_DIR+'logs/time_update.log',
+
+logging.basicConfig(filename=BASE_DIR+'logs/system_logs/time_update.log',
                     format='%(levelname)s: %(message)s',
                     level=logging.DEBUG)
 logger = logging.getLogger()
@@ -46,7 +47,7 @@ if __name__ == '__main__':
                             except Exception as err:
                                 logger.error(err)
                             else:
-                                logger.info('System date has been set to: {}'.format(timestamp))
+                                logger.info('System time has been set to: {}'.format(timestamp))
                                 break
                         else:
                             logger.warning('GPS Signal weak. Waiting {} '
