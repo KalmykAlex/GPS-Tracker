@@ -128,7 +128,7 @@ the _logs_ folder. It's name is _route_routeID_cardID.csv_.
 
 The CSV file contains the timestamp, latitude, longitude and total_distance.
 
-    Timestamp	            Latitude	Longitude	Total_Distance
+    Timestamp           Latitude    Longitude   Total_Distance
     2020-02-06T13:59:14Z	44.424582	26.053711	0
     2020-02-06T13:59:15Z	44.424571	26.053722	1.5
     2020-02-06T13:59:16Z	44.424557	26.053733	3.29
@@ -145,14 +145,21 @@ The CSV file contains the timestamp, latitude, longitude and total_distance.
 - configured logging files for debugging, information and errors
 - script that automatically updates system time at startup
 - implemented measurement of distance
+- system robustness for GPS signal loss
+- system robustness for Power Supply loss
+- automatically resuming journey after power failure
+- multiple cards management (rejection of foreign cards + only one card per route)
+- aproximation of distance traveled in case of power failure or GPS signal loss
+- global routes log that is used for generating route reports
 
 
 ### Features to be added
 
-- logging the coordinates in case of failure and automatic reload of the measurement (with some expected errors)
 - implementing a KALMAN filter for better GPS data filtering (requires accelerometer data)
 - adding a switch/button to prevent accidental card readings
 - adding a buzzer/led indicator for better debugging
+- adding a I2C LCD Scren as a user interface
+- displaying userful information on LCD (state of journey, distance traveled, total distance traveled etc.)
 - adding a buzzer tone in the case of movement without card readings (as fail-safe)
 - database for card users and card id's
  
