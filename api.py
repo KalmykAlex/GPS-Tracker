@@ -1,6 +1,7 @@
 import json
 from flask import Flask, request, jsonify, abort
 from flask_restful import Resource, Api
+from subprocess import check_output
 
 
 app = Flask(__name__)
@@ -9,6 +10,7 @@ api = Api(app)
 # TODO: logging
 
 routes_file = '/home/pi/trackman/GPS-Tracker/logs/gps_logs/routes.log'
+HOST_IP = check_output(['hostname', '--all-ip-addresses']).decode('ascii').strip()
 
 
 def get_all_routes_data():
@@ -36,7 +38,6 @@ def get_routes_data_by_param(params_dict):
 def get_routes():
     params_dict = request.args.to_dict()
     if len(params_dict) > 1:
-        print(params_dict)
         raise TypeError('Too many parameters')
     try:
         if params_dict == {}:
@@ -46,9 +47,8 @@ def get_routes():
     except FileNotFoundError:
         abort(404)
     else:
-        print(data)
         return data
 
 
 if __name__ == '__main__':
-    app.run(host='172.16.4.123', port='5000')
+    app.run(host=HOST_IP, port='5000')
