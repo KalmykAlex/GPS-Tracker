@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import csv
 import serial
 import time
 import json
@@ -125,9 +126,19 @@ if __name__ == '__main__':
                             # Log route data only if in journey
                             # else check for unexpected script termination
                             if journey_state:
-                                with open(gps_logs_folder + 'routes/route_{}_{}.log'.format(route_id, user_id), 'a') as routelog:
+                                routelog_exists = os.path.isfile(gps_logs_folder + 'routes/route_{}_{}.csv'.format(route_id, user_id))
+                                with open(gps_logs_folder + 'routes/route_{}_{}.csv'.format(route_id, user_id), 'a') as routelog:
                                     print('{}, {}, {}, {}'.format(timestamp, lat, lon, total_distance))  # TODO: remove
-                                    routelog.write('{}, {}, {}, {}\n'.format(timestamp, lat, lon, total_distance))
+                                    headers = ['Timestamp', 'Latitude', 'Longitude', 'Total_Distance']
+                                    writer = csv.DictWriter(routelog, delimiter=',', lineterminator='\n', fieldnames=headers)
+                                    if not routelog_exists:
+                                        writer.writeheader()
+                                    writer.writerow({
+                                        'Timestamp': timestamp,
+                                        'Latitude': lat,
+                                        'Longitude': lon,
+                                        'Total_Distance': total_distance
+                                    })
                                     routelog.flush()
                                     os.fsync(routelog)
                             else:
@@ -154,13 +165,13 @@ if __name__ == '__main__':
                                     user_id = glob.glob(gps_logs_folder + 'routes/route_{}_*'.format(route_id))[0].split('/')[-1][8:-4]
 
                                     # Rebuilding Route Parameters
-                                    with open(gps_logs_folder + 'routes/route_{}_{}.log'.format(route_id, user_id)) as file:
+                                    with open(gps_logs_folder + 'routes/route_{}_{}.csv'.format(route_id, user_id)) as file:
                                         lines = file.read().splitlines()
                                         total_distance = float(lines[-1].split(',')[-1])
                                         route.update([
-                                            ('timestamp_start', lines[0].split(',')[0]),
-                                            ('lat_start', lines[0].split(',')[1]),
-                                            ('lon_start', lines[0].split(',')[2]),
+                                            ('timestamp_start', lines[1].split(',')[0]),
+                                            ('lat_start', lines[1].split(',')[1]),
+                                            ('lon_start', lines[1].split(',')[2]),
                                         ])
                                         # Resuming Distance Calculation
                                         last_lat = float(lines[-1].split(',')[1])
