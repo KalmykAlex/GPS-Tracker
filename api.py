@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import json
 from flask import Flask, request, jsonify, abort
 from flask_restful import Resource, Api

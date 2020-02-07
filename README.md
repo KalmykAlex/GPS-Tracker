@@ -69,20 +69,16 @@ help us calculate the distance between GPS coordinates.
 
 ### Implementation Details
 
-#### Crontab and Launcher.sh
+#### RC.local and Launcher.sh
 
-At boot time a crontab is configured to stard a _launcher.sh_ script that will in turn start our python
-scripts. To setup the crontab simply type the following commands:
+At boot time a rc.local is configured to stard a _launcher.sh_ script that will in turn start our python
+scripts. To setup /etc/rc.local simply add the following line to the end of the file followed by _exit 0_:
 
-    sudo crontab -e
-    
-And after the crontab file openes add a line at the bottom:
-
-    #Crontab file
-    @reboot sh /path/to/laucher.sh > /path/to/logs/folder/crontab.log 2>&1
+    /path/to/bash/script/launcher.sh
+    exit 0
     
 Make sure _launcher.sh_ has execute rights and reboot your Raspberry. Now the _launcher.sh_ script
-should start automatically. Check the _crontab.log_ for possible errors.
+should start automatically.
 
 #### Time Update script
 
@@ -108,7 +104,6 @@ folder in the main project folder:
   - tracker.log - logs information about _tracker.py_ script startup, card redings, journey state, debugging information and 
 various errors
   - time_update.log - logs information about _time_update.py_ script startup, successfull date change and various errors
-  - crontab - logs errors and information about _launcher.sh_ script
 - __GPS Logs__: are logs that are related to the routes GPS data:
   - routes.log - logs all the routes in JSON format, each new route on a newline.
   - /routes/route_\<routeID>_\<cardID>.csv - logs all the intermediary GPS coordinates in a csv file.
