@@ -15,6 +15,9 @@ from geopy.distance import geodesic
 from serial.tools import list_ports
 from mfrc522 import SimpleMFRC522
 
+# From current directory(lcd_functions.py)
+from lcd_functions import Lcd
+
 
 BASE_DIR = '/home/pi/trackman/GPS-Tracker/'
 
@@ -64,8 +67,14 @@ if __name__ == '__main__':
     last_two_coordinates = []
     total_distance = 0
     route = {}
-    #TODO: to replace with actual card ID's stored in a postgresql database
+    lcd = Lcd()
+    # TODO: to replace with actual card ID's stored in a postgresql database
     card_db = ['780870559455', '142189814135']
+
+    # Display start of execution
+    lcd.display('Starting', 1)
+    lcd.display('Tracker', 2)
+    time.sleep(1)
 
     # Worker Thread, eventing and queue initialization
     card_id_queue = queue.Queue()
@@ -99,10 +108,12 @@ if __name__ == '__main__':
                             timestamp = _date + 'T' + _time + 'Z'
                         except Exception:
                             # TODO: flash red led to indicate weak GPS signal
+                            lcd.display('Weak GPS Signal!', 1)
+                            lcd.display_scrolling('Waiting for stronger signal...', 2, num_scrolls=1)
                             print('Weak GPS signal! Waiting {} second(s) for stronger signal...'.format(WAIT_TIME))  # TODO: remove
                             logger.warning('Weak GPS signal! Waiting {} second(s) for stronger signal...'.format(WAIT_TIME))
-                            ser.reset_input_buffer()
                             time.sleep(WAIT_TIME)
+                            ser.reset_input_buffer()
                         else:
                             # TODO: turn on green led to indicate good GPS signal
 
@@ -141,6 +152,11 @@ if __name__ == '__main__':
                                     })
                                     routelog.flush()
                                     os.fsync(routelog)
+
+                                    # Informs user of journey state and distance
+                                    lcd.display('Journey:ACTIVE ', 1)
+                                    lcd.display('distance: {} m   '.format(round(total_distance)), 2)
+
                             else:
                                 # Making sure the System is Fail Proof on Power Outage
                                 try:
@@ -160,9 +176,12 @@ if __name__ == '__main__':
                                     print('Unexpected Script termination detected. Rebuilding route parameters.')  # TODO: remove
                                     logger.warning('Unexpected Script termination detected. '
                                                    'Rebuilding route parameters.')
+                                    lcd.clear()
+                                    lcd.display('WAIT!', 1)
+                                    lcd.display_scrolling('Unexpected script termination detected. Resuming last route.', 2, num_scrolls=1)
 
                                     # Automatically resume the journey of last user_id validated card
-                                    user_id = glob.glob(gps_logs_folder + 'routes/route_{}_*'.format(route_id))[0].split('/')[-1][8:-4]
+                                    user_id = glob.glob(gps_logs_folder + 'routes/route_{}_*'.format(route_id))[0].split('/')[-1].split('_')[-1][:-4]
 
                                     # Rebuilding Route Parameters
                                     with open(gps_logs_folder + 'routes/route_{}_{}.csv'.format(route_id, user_id)) as file:
@@ -177,16 +196,29 @@ if __name__ == '__main__':
                                         last_lat = float(lines[-1].split(',')[1])
                                         last_lon = float(lines[-1].split(',')[2])
                                         last_two_coordinates = [[last_lat, last_lon]]
+                                else:
+                                    #Informing user of inactive jouney
+                                    lcd.display('Journey:INACTIVE', 1)
+                                    lcd.display('Swipe to start  ', 2)
+                                    time.sleep(1)
+
 
                             # Verifying correct card validation
                             if read_card_event.is_set():
                                 read_card_event.clear()
-
                                 card_id = str(card_id_queue.get(block=False))
+
+                                # LCD display card read event
+                                lcd.display('Card Read!      ', 1)
+                                lcd.display('ID: {}'.format(card_id), 2)
+                                time.sleep(1)
 
                                 if card_id not in card_db:
                                     # TODO: ring buzzer and flash RED LED to indicate invalid card read
                                     print('- Invalid Card Read! ID: {}'.format(card_id))  # TODO: remove
+                                    lcd.clear()
+                                    lcd.display('ERROR', 1)
+                                    lcd.display_scrolling('Invalid Card Read!', 2, num_scrolls=2)
                                     logger.warning('RC522: Invalid Card! ID: {}'.format(card_id))
                                     # TODO: remove following line after implementation
                                     logger.debug('Ringing buzzer and flashing red led because card not valid')
@@ -205,6 +237,12 @@ if __name__ == '__main__':
                                     else:
                                         if user_id == card_id:
                                             journey_state = False  # ending of journey
+
+                                            # Inform user of journey end
+                                            lcd.clear()
+                                            lcd.display(' END OF ROUTE!! ', 1)
+                                            lcd.display('distance: {} m'.format(round(total_distance)), 2)
+                                            time.sleep(WAIT_TIME)
 
                                             # Journaling Stop Route Parameters
                                             route.update([
@@ -231,6 +269,9 @@ if __name__ == '__main__':
                                             logger.debug('Ringing buzzer and flashing red led '
                                                          'because needed card {} to end journey.'
                                                          .format(user_id))
+                                            # signaling wrong card to end journey read
+                                            lcd.display('Warning!        ', 1)
+                                            lcd.display_scrolling('Wrong Card to end journey!', 2, num_scrolls=1)
 
                                 print('-- Journey State: {}.'.format(journey_state))
                                 logger.info('Journey State: {}. '
@@ -241,5 +282,7 @@ if __name__ == '__main__':
             # TODO: flash red led to indicate lack of GPS sensor
             print(err)  # TODO: remove
             print('GPS signal not found. Waiting {} second(s) for GPS signal...'.format(WAIT_TIME))  # TODO: remove
+            lcd.display('ERROR           ', 1)
+            lcd.display_scrolling('Please connect GPS Sensor', 2, num_scrolls=1)
             logger.warning('GPS signal not found. Waiting {} second(s) for GPS signal...'.format(WAIT_TIME))
             time.sleep(WAIT_TIME)  # Waiting for GPS device to reconnect
