@@ -23,6 +23,7 @@ class Lcd():
         Parameters:(text to print, line number on which to print,
                     number of times to scroll, number of columns of lcd display)
         Return: function to display scrolling text on lcd display
+        Execution time: 1 + (len(text)-16)*0.2 + 0.4
         """
         for _ in range(num_scrolls):
             if(len(text) > num_cols):
@@ -32,7 +33,7 @@ class Lcd():
                     str_to_print = text[i:i+num_cols]
                     self.display_.lcd_display_string(str_to_print, line)
                     time.sleep(0.2)
-                time.sleep(1)
+                time.sleep(0.4)
             else:
                 self.display_.lcd_display_string(text, line)
 
