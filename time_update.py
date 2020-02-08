@@ -32,8 +32,8 @@ if __name__ == '__main__':
     lcd = Lcd()
     buzzer = Buzzer()
 
-    lcd.display('Updating Time', 1)
-    lcd.display('Starting...', 2)
+    lcd.display('Updating Time  ', 1)
+    lcd.display('Starting...    ', 2)
     buzzer.beep_for(0.5)
     while True:
         logger.info('Starting GPS Time Update.')
@@ -50,6 +50,7 @@ if __name__ == '__main__':
 
                         # check to see if gps data is present (signal strong enough)
                         if data[1] and data[9]:
+                            lcd.display('Updating Time   ', 1)
                             lcd.display('GPS signal found', 2)
                             buzzer.beep()
                             time.sleep(0.9)
@@ -67,11 +68,16 @@ if __name__ == '__main__':
                         else:
                             time.sleep(0.3)
                             buzzer.beep_error()  #1.2 sec execution
+                            lcd.display('Updating Time   ', 1)
                             lcd.display_scrolling('Waiting for GPS signal...', 2, num_scrolls=1)  #3.2 sec execution
                             time.sleep(0.3)  # to make the total wait time 5 seconds
                             logger.warning('GPS Signal weak. Waiting 5 '
                                            'seconds for stronger GPS signal...')
-                            ser.reset_input_buffer()
+                            try:
+                                ser.reset_input_buffer()
+                            except:
+                                # I/O error silencing
+                                pass
         except IOError:
             time.sleep(2)
             buzzer.beep_error()  # 1.2 sec execution

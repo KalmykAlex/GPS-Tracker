@@ -117,7 +117,11 @@ if __name__ == '__main__':
                             lcd.display_scrolling('Waiting for stronger signal...', 2, num_scrolls=1)  #4.2 sec execution
                             print('Weak GPS signal! Waiting 5 seconds for stronger signal...')  # TODO: remove
                             logger.warning('Weak GPS signal! Waiting 5 seconds for stronger signal...')
-                            ser.reset_input_buffer()
+                            try:
+                                ser.reset_input_buffer()
+                            except:
+                                # I/O error silencing
+                                pass
                         else:
                             # TODO: turn on green led to indicate good GPS signal
 
@@ -158,8 +162,8 @@ if __name__ == '__main__':
                                     os.fsync(routelog)
 
                                     # Informs user of journey state and distance
-                                    lcd.display('Journey:ACTIVE ', 1)
-                                    lcd.display('distance: {} m   '.format(round(total_distance)), 2)
+                                    lcd.display('Journey:ACTIVE  ', 1)
+                                    lcd.display('distance: {} km  '.format(round(total_distance/1000, 1)), 2)
 
                             else:
                                 # Making sure the System is Fail Proof on Power Outage
