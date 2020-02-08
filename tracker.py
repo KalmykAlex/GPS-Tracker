@@ -15,8 +15,9 @@ from geopy.distance import geodesic
 from serial.tools import list_ports
 from mfrc522 import SimpleMFRC522
 
-# From current directory(lcd_functions.py)
+# From current directory(lcd_functions.py and buzzer_functions.py)
 from lcd_functions import Lcd
+from buzzer_functions import Buzzer
 
 
 BASE_DIR = '/home/pi/trackman/GPS-Tracker/'
@@ -68,13 +69,15 @@ if __name__ == '__main__':
     total_distance = 0
     route = {}
     lcd = Lcd()
+    buzzer = Buzzer()
     # TODO: to replace with actual card ID's stored in a postgresql database
     card_db = ['780870559455', '142189814135']
 
     # Display start of execution
     lcd.display('Starting', 1)
     lcd.display('Tracker', 2)
-    time.sleep(1)
+    buzzer.beep_for(0.5)
+    time.sleep(0.5)
 
     # Worker Thread, eventing and queue initialization
     card_id_queue = queue.Queue()
@@ -83,6 +86,7 @@ if __name__ == '__main__':
                                         args=[read_card_event, card_id_queue],
                                         daemon=True)
     read_card_thread.start()
+
 
     while True:  # to run even if a port disconnect error is raised
 
@@ -109,10 +113,10 @@ if __name__ == '__main__':
                         except Exception:
                             # TODO: flash red led to indicate weak GPS signal
                             lcd.display('Weak GPS Signal!', 1)
-                            lcd.display_scrolling('Waiting for stronger signal...', 2, num_scrolls=1)
-                            print('Weak GPS signal! Waiting {} second(s) for stronger signal...'.format(WAIT_TIME))  # TODO: remove
-                            logger.warning('Weak GPS signal! Waiting {} second(s) for stronger signal...'.format(WAIT_TIME))
-                            time.sleep(WAIT_TIME)
+                            buzzer.beep_for(0.8)
+                            lcd.display_scrolling('Waiting for stronger signal...', 2, num_scrolls=1)  #4.2 sec execution
+                            print('Weak GPS signal! Waiting 5 seconds for stronger signal...')  # TODO: remove
+                            logger.warning('Weak GPS signal! Waiting 5 seconds for stronger signal...')
                             ser.reset_input_buffer()
                         else:
                             # TODO: turn on green led to indicate good GPS signal
@@ -178,6 +182,7 @@ if __name__ == '__main__':
                                                    'Rebuilding route parameters.')
                                     lcd.clear()
                                     lcd.display('WAIT!', 1)
+                                    buzzer.beep_error()
                                     lcd.display_scrolling('Unexpected script termination detected. Resuming last route.', 2, num_scrolls=1)
 
                                     # Automatically resume the journey of last user_id validated card
@@ -209,16 +214,19 @@ if __name__ == '__main__':
                                 card_id = str(card_id_queue.get(block=False))
 
                                 # LCD display card read event
+                                buzzer.beep()
                                 lcd.display('Card Read!      ', 1)
                                 lcd.display('ID: {}'.format(card_id), 2)
-                                time.sleep(1)
+                                time.sleep(0.9)
 
                                 if card_id not in card_db:
                                     # TODO: ring buzzer and flash RED LED to indicate invalid card read
                                     print('- Invalid Card Read! ID: {}'.format(card_id))  # TODO: remove
                                     lcd.clear()
                                     lcd.display('ERROR', 1)
+                                    buzzer.high()
                                     lcd.display_scrolling('Invalid Card Read!', 2, num_scrolls=2)
+                                    buzzer.low()
                                     logger.warning('RC522: Invalid Card! ID: {}'.format(card_id))
                                     # TODO: remove following line after implementation
                                     logger.debug('Ringing buzzer and flashing red led because card not valid')
@@ -240,7 +248,8 @@ if __name__ == '__main__':
 
                                             # Inform user of journey end
                                             lcd.clear()
-                                            lcd.display(' END OF ROUTE!! ', 1)
+                                            lcd.display('End of Route! ', 1)
+                                            buzzer.beep_exit()
                                             lcd.display('distance: {} m'.format(round(total_distance)), 2)
                                             time.sleep(WAIT_TIME)
 
@@ -271,7 +280,9 @@ if __name__ == '__main__':
                                                          .format(user_id))
                                             # signaling wrong card to end journey read
                                             lcd.display('Warning!        ', 1)
+                                            buzzer.high()
                                             lcd.display_scrolling('Wrong Card to end journey!', 2, num_scrolls=1)
+                                            buzzer.low()
 
                                 print('-- Journey State: {}.'.format(journey_state))
                                 logger.info('Journey State: {}. '
@@ -282,7 +293,9 @@ if __name__ == '__main__':
             # TODO: flash red led to indicate lack of GPS sensor
             print(err)  # TODO: remove
             print('GPS signal not found. Waiting {} second(s) for GPS signal...'.format(WAIT_TIME))  # TODO: remove
+            buzzer.beep_error()  # 1.2 sec execution
             lcd.display('ERROR           ', 1)
-            lcd.display_scrolling('Please connect GPS Sensor', 2, num_scrolls=1)
-            logger.warning('GPS signal not found. Waiting {} second(s) for GPS signal...'.format(WAIT_TIME))
-            time.sleep(WAIT_TIME)  # Waiting for GPS device to reconnect
+            lcd.display_scrolling('Please connect GPS Sensor', 2, num_scrolls=1)  # 3.2 sec execution
+            logger.warning('GPS signal not found. Waiting 10 seconds for GPS signal...')
+            time.sleep(5.6)  # Waiting for GPS device to reconnect
+

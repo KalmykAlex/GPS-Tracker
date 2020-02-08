@@ -1,6 +1,6 @@
 import sys
 import time
-sys.path.insert(1, 'lcd')
+sys.path.insert(1, '/home/pi/trackman/GPS-Tracker/lcd')
 import lcddriver
 
 
