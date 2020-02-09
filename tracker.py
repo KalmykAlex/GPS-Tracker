@@ -163,14 +163,15 @@ if __name__ == '__main__':
 
                                     # Informs user of journey state and distance
                                     lcd.display('Journey:ACTIVE  ', 1)
-                                    lcd.display('distance: {} km  '.format(round(total_distance/1000, 1)), 2)
+                                    lcd.display('dist: {} km      '.format(round(total_distance/1000, 1)), 2)
 
                             else:
                                 # Making sure the System is Fail Proof on Power Outage
                                 try:
-                                    with open(gps_logs_folder + 'routes.log') as global_routelog:
+                                    with open(gps_logs_folder + 'routes.log', 'r') as global_routelog:
                                         # get last route id from global routelog
-                                        last_route_id = json.loads(list(global_routelog)[-1])['route_id']
+                                        global_routelog_data = global_routelog.read().splitlines()
+                                        last_route_id = json.loads(global_routelog_data[-1])['route_id']
                                         route_id = last_route_id + 1
                                         print('Last route ID: {}. Current route ID: {}'.format(last_route_id, route_id))  # TODO: remove
 
@@ -180,7 +181,6 @@ if __name__ == '__main__':
                                     route.update({'route_id': route_id})
 
                                 if route_id in [int(_.split('_')[1]) for _ in os.listdir(gps_logs_folder + 'routes/')]:
-                                    journey_state = True
                                     print('Unexpected Script termination detected. Rebuilding route parameters.')  # TODO: remove
                                     logger.warning('Unexpected Script termination detected. '
                                                    'Rebuilding route parameters.')
@@ -190,7 +190,8 @@ if __name__ == '__main__':
                                     lcd.display_scrolling('Unexpected script termination detected. Resuming last route.', 2, num_scrolls=1)
 
                                     # Automatically resume the journey of last user_id validated card
-                                    user_id = glob.glob(gps_logs_folder + 'routes/route_{}_*'.format(route_id))[0].split('/')[-1].split('_')[-1][:-4]
+                                    user_id = os.path.basename(glob.glob(gps_logs_folder + 'routes/route_{}_*'.format(route_id))[0]).split('_')[-1].split('.')[0]
+                                    journey_state = True
 
                                     # Rebuilding Route Parameters
                                     with open(gps_logs_folder + 'routes/route_{}_{}.csv'.format(route_id, user_id)) as file:
