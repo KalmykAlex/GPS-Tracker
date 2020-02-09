@@ -5,6 +5,10 @@ from flask import Flask, request, jsonify, abort
 from flask_restful import Resource, Api
 from subprocess import check_output
 
+# From current directory (lcd_functions.py and buzzer_functions.py)
+from lcd_functions import Lcd
+from buzzer_functions import Buzzer
+
 
 app = Flask(__name__)
 api = Api(app)
@@ -53,4 +57,15 @@ def get_routes():
 
 
 if __name__ == '__main__':
-    app.run(host=HOST_IP, port='5000')
+
+    lcd = Lcd()
+    buzzer = Buzzer()
+    PORT = '5000'
+
+    buzzer.beep()
+
+    # Display Connection Info
+    lcd.display('API - PORT:{} '.format(PORT), 1)
+    lcd.display(HOST_IP, 2)
+
+    app.run(host=HOST_IP, port=PORT)
