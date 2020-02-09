@@ -9,7 +9,6 @@ import glob
 import logging
 import threading
 import queue
-import RPi.GPIO as GPIO
 
 from geopy.distance import geodesic
 from serial.tools import list_ports
@@ -18,6 +17,19 @@ from mfrc522 import SimpleMFRC522
 # From current directory(lcd_functions.py and buzzer_functions.py)
 from lcd_functions import Lcd
 from buzzer_functions import Buzzer
+
+# From current directory (languages.py)
+import languages
+
+
+supported_languages = {'en': 'English', 'ro': 'Romanian'}
+LANGUAGE = 'en'
+
+# Language select
+if supported_languages[LANGUAGE] == 'Romanian':
+    lang = languages.Romanian()
+else:
+    lang = languages.English()
 
 
 BASE_DIR = '/home/pi/trackman/GPS-Tracker/'
@@ -33,9 +45,9 @@ logger = logging.getLogger()
 def get_gps_port(manufacturer):
     """Gets the serial port on which the GPS sensor is transmitting data."""
     try:
-        for port in list_ports.comports():
+        for com_port in list_ports.comports():
             if manufacturer in port.manufacturer:
-                return '/dev/' + port.name
+                return '/dev/' + com_port.name
     except TypeError:
         logger.error('Port for {} device not found.'.format(manufacturer))
 
@@ -45,15 +57,15 @@ def read_card(event, out_queue):
     reader = SimpleMFRC522()
     while True:
         try:
-            card_id, info = reader.read()
+            _id, info = reader.read()
             out_queue.put(card_id)
             print('- Card Read. ID: {} INFO: {}'.format(card_id, info if info else 'not filled'))  # TODO: remove
             logger.info('RC522 Card Read. ID: {} INFO: {}'
-                        .format(card_id, info if info else 'not filled' ))
+                        .format(_id, info if info else 'not filled'))
             event.set()
             time.sleep(5)
-        except Exception as err:
-            logger.error(err)
+        except Exception as error:
+            logger.error(error)
 
 
 if __name__ == '__main__':
@@ -74,8 +86,8 @@ if __name__ == '__main__':
     card_db = ['780870559455', '142189814135']
 
     # Display start of execution
-    lcd.display('Starting', 1)
-    lcd.display('Tracker', 2)
+    lcd.display(lang.msg_s_starting, 1)
+    lcd.display(lang.msg_s_tracker, 2)
     buzzer.beep_for(0.5)
     time.sleep(0.5)
 
@@ -86,7 +98,6 @@ if __name__ == '__main__':
                                         args=[read_card_event, card_id_queue],
                                         daemon=True)
     read_card_thread.start()
-
 
     while True:  # to run even if a port disconnect error is raised
 
@@ -112,9 +123,9 @@ if __name__ == '__main__':
                             timestamp = _date + 'T' + _time + 'Z'
                         except Exception:
                             # TODO: flash red led to indicate weak GPS signal
-                            lcd.display('Weak GPS Signal!', 1)
+                            lcd.display(lang.msg_s_weak_gps, 1)
                             buzzer.beep_for(0.8)
-                            lcd.display_scrolling('Waiting for stronger signal...', 2, num_scrolls=1)  #4.2 sec execution
+                            lcd.display_scrolling(lang.msg_d_waiting_for_signal, 2, num_scrolls=1)  #~4.2 sec execution
                             print('Weak GPS signal! Waiting 5 seconds for stronger signal...')  # TODO: remove
                             logger.warning('Weak GPS signal! Waiting 5 seconds for stronger signal...')
                             try:
@@ -130,7 +141,7 @@ if __name__ == '__main__':
                                 last_two_coordinates.append([lat, lon])
                                 print(last_two_coordinates)  # TODO: remove
                             else:
-                                last_two_coordinates.clear() # clear list when not in journey
+                                last_two_coordinates.clear()  # clear list when not in journey
 
                             if len(last_two_coordinates) == 2:
                                 delta_distance = geodesic(last_two_coordinates[0], last_two_coordinates[1]).m
@@ -145,11 +156,16 @@ if __name__ == '__main__':
                             # Log route data only if in journey
                             # else check for unexpected script termination
                             if journey_state:
-                                routelog_exists = os.path.isfile(gps_logs_folder + 'routes/route_{}_{}.csv'.format(route_id, user_id))
-                                with open(gps_logs_folder + 'routes/route_{}_{}.csv'.format(route_id, user_id), 'a') as routelog:
+                                routelog_exists = os.path.isfile(gps_logs_folder + 'routes/route_{}_{}.csv'
+                                                                 .format(route_id, user_id))
+                                with open(gps_logs_folder + 'routes/route_{}_{}.csv'
+                                        .format(route_id, user_id), 'a') as routelog:
                                     print('{}, {}, {}, {}'.format(timestamp, lat, lon, total_distance))  # TODO: remove
                                     headers = ['Timestamp', 'Latitude', 'Longitude', 'Total_Distance']
-                                    writer = csv.DictWriter(routelog, delimiter=',', lineterminator='\n', fieldnames=headers)
+                                    writer = csv.DictWriter(routelog, delimiter=',',
+                                                            lineterminator='\n',
+                                                            fieldnames=headers
+                                                            )
                                     if not routelog_exists:
                                         writer.writeheader()
                                     writer.writerow({
@@ -162,8 +178,8 @@ if __name__ == '__main__':
                                     os.fsync(routelog)
 
                                     # Informs user of journey state and distance
-                                    lcd.display('Journey:ACTIVE  ', 1)
-                                    lcd.display('dist: {} km      '.format(round(total_distance/1000, 1)), 2)
+                                    lcd.display(lang.msg_s_active_route, 1)
+                                    lcd.display(lang.msg_s_distance.format(round(total_distance/1000, 1)), 2)
 
                             else:
                                 # Making sure the System is Fail Proof on Power Outage
@@ -173,28 +189,33 @@ if __name__ == '__main__':
                                         global_routelog_data = global_routelog.read().splitlines()
                                         last_route_id = json.loads(global_routelog_data[-1])['route_id']
                                         route_id = last_route_id + 1
-                                        print('Last route ID: {}. Current route ID: {}'.format(last_route_id, route_id))  # TODO: remove
+                                        # TODO: remove following print
+                                        print('Last route ID: {}. Current route ID: {}'.format(last_route_id, route_id))
 
-                                except Exception:
+                                except FileNotFoundError:
                                     route_id = 1
                                 finally:
                                     route.update({'route_id': route_id})
 
                                 if route_id in [int(_.split('_')[1]) for _ in os.listdir(gps_logs_folder + 'routes/')]:
-                                    print('Unexpected Script termination detected. Rebuilding route parameters.')  # TODO: remove
+                                    # TODO: remove following print
+                                    print('Unexpected Script termination detected. Rebuilding route parameters.')
                                     logger.warning('Unexpected Script termination detected. '
                                                    'Rebuilding route parameters.')
                                     lcd.clear()
-                                    lcd.display('WAIT!', 1)
+                                    lcd.display(lang.msg_s_wait, 1)
                                     buzzer.beep_error()
-                                    lcd.display_scrolling('Unexpected script termination detected. Resuming last route.', 2, num_scrolls=1)
+                                    lcd.display_scrolling(lang.msg_d_unexpected_termination, 2, num_scrolls=1)
 
                                     # Automatically resume the journey of last user_id validated card
-                                    user_id = os.path.basename(glob.glob(gps_logs_folder + 'routes/route_{}_*'.format(route_id))[0]).split('_')[-1].split('.')[0]
+                                    user_id = os.path.basename(
+                                        glob.glob(gps_logs_folder + 'routes/route_{}_*'
+                                                  .format(route_id))[0]).split('_')[-1].split('.')[0]
                                     journey_state = True
 
                                     # Rebuilding Route Parameters
-                                    with open(gps_logs_folder + 'routes/route_{}_{}.csv'.format(route_id, user_id)) as file:
+                                    with open(gps_logs_folder + 'routes/route_{}_{}.csv'
+                                            .format(route_id, user_id)) as file:
                                         lines = file.read().splitlines()
                                         total_distance = float(lines[-1].split(',')[-1])
                                         route.update([
@@ -207,11 +228,10 @@ if __name__ == '__main__':
                                         last_lon = float(lines[-1].split(',')[2])
                                         last_two_coordinates = [[last_lat, last_lon]]
                                 else:
-                                    #Informing user of inactive jouney
-                                    lcd.display('Journey:INACTIVE', 1)
-                                    lcd.display('Swipe to start  ', 2)
+                                    # Informing user of inactive jouney
+                                    lcd.display(lang.msg_s_inactive_route, 1)
+                                    lcd.display(lang.msg_s_swipe_to_start, 2)
                                     time.sleep(1)
-
 
                             # Verifying correct card validation
                             if read_card_event.is_set():
@@ -220,24 +240,24 @@ if __name__ == '__main__':
 
                                 # LCD display card read event
                                 buzzer.beep()
-                                lcd.display('Card Read!      ', 1)
-                                lcd.display('ID: {}'.format(card_id), 2)
+                                lcd.display(lang.msg_s_card_read, 1)
+                                lcd.display(lang.msg_s_id.format(card_id), 2)
                                 time.sleep(0.9)
 
                                 if card_id not in card_db:
                                     # TODO: ring buzzer and flash RED LED to indicate invalid card read
                                     print('- Invalid Card Read! ID: {}'.format(card_id))  # TODO: remove
                                     lcd.clear()
-                                    lcd.display('ERROR', 1)
+                                    lcd.display(lang.msg_s_error, 1)
                                     buzzer.high()
-                                    lcd.display_scrolling('Invalid Card Read!', 2, num_scrolls=2)
+                                    lcd.display(lang.msg_s_invalid_card, 2)
                                     buzzer.low()
                                     logger.warning('RC522: Invalid Card! ID: {}'.format(card_id))
                                     # TODO: remove following line after implementation
                                     logger.debug('Ringing buzzer and flashing red led because card not valid')
                                 else:
                                     if not journey_state:
-                                        journey_state = True  # beggining of journey
+                                        journey_state = True  # beginning of journey
                                         user_id = card_id
 
                                         # journaling start route parameters
@@ -253,12 +273,12 @@ if __name__ == '__main__':
 
                                             # Inform user of journey end
                                             lcd.clear()
-                                            lcd.display('End of Route! ', 1)
+                                            lcd.display(lang.msg_s_end_of_route, 1)
                                             buzzer.beep_exit()
-                                            lcd.display('distance: {} m'.format(round(total_distance)), 2)
+                                            lcd.display(lang.msg_s_distance.format(round(total_distance)), 2)
                                             time.sleep(WAIT_TIME)
 
-                                            # Journaling Stop Route Parameters
+                                            # Stop Route Parameters
                                             route.update([
                                                 ('user_id', user_id),
                                                 ('timestamp_stop', timestamp),
@@ -284,9 +304,9 @@ if __name__ == '__main__':
                                                          'because needed card {} to end journey.'
                                                          .format(user_id))
                                             # signaling wrong card to end journey read
-                                            lcd.display('Warning!        ', 1)
+                                            lcd.display(lang.msg_s_warning, 1)
                                             buzzer.high()
-                                            lcd.display_scrolling('Wrong Card to end journey!', 2, num_scrolls=1)
+                                            lcd.display_scrolling(lang.msg_d_wrong_card, 2, num_scrolls=1)
                                             buzzer.low()
 
                                 print('-- Journey State: {}.'.format(journey_state))
@@ -299,8 +319,7 @@ if __name__ == '__main__':
             print(err)  # TODO: remove
             print('GPS signal not found. Waiting {} second(s) for GPS signal...'.format(WAIT_TIME))  # TODO: remove
             buzzer.beep_error()  # 1.2 sec execution
-            lcd.display('ERROR           ', 1)
-            lcd.display_scrolling('Please connect GPS Sensor', 2, num_scrolls=1)  # 3.2 sec execution
+            lcd.display(lang.msg_s_error, 1)
+            lcd.display_scrolling(lang.msg_d_connect_gps, 2, num_scrolls=1)  # ~3.2 sec execution
             logger.warning('GPS signal not found. Waiting 10 seconds for GPS signal...')
             time.sleep(5.6)  # Waiting for GPS device to reconnect
-

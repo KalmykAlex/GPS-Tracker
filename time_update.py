@@ -1,14 +1,26 @@
-import sys
 import time
 import serial
 import logging
 import subprocess
-from datetime import datetime
 from serial.tools import list_ports
 
 # From current directory (lcd_functions.py and buzzer_functions.py)
 from lcd_functions import Lcd
 from buzzer_functions import Buzzer
+
+# From current directory (languages.py)
+import languages
+
+
+supported_languages = {'en': 'English', 'ro': 'Romanian'}
+LANGUAGE = 'en'
+
+# Language select
+if supported_languages[LANGUAGE] == 'English':
+    lang = languages.English()
+elif supported_languages[LANGUAGE] == 'Romanian':
+    lang = languages.Romanian()
+
 
 BASE_DIR = '/home/pi/trackman/GPS-Tracker/'
 
@@ -32,8 +44,8 @@ if __name__ == '__main__':
     lcd = Lcd()
     buzzer = Buzzer()
 
-    lcd.display('Updating Time  ', 1)
-    lcd.display('Starting...    ', 2)
+    lcd.display(lang.msg_s_updating_time, 1)
+    lcd.display(lang.msg_s_starting, 2)
     buzzer.beep_for(0.5)
     while True:
         logger.info('Starting GPS Time Update.')
@@ -50,8 +62,8 @@ if __name__ == '__main__':
 
                         # check to see if gps data is present (signal strong enough)
                         if data[1] and data[9]:
-                            lcd.display('Updating Time   ', 1)
-                            lcd.display('GPS signal found', 2)
+                            lcd.display(lang.msg_s_updating_time, 1)
+                            lcd.display(lang.msg_s_gps_signal_found, 2)
                             buzzer.beep()
                             time.sleep(0.9)
                             _date = data[9][4:6] + '-' + data[9][2:4] + '-' + data[9][:2]
@@ -67,11 +79,11 @@ if __name__ == '__main__':
                                 break
                         else:
                             time.sleep(0.3)
-                            buzzer.beep_error()  #1.2 sec execution
-                            lcd.display('Updating Time   ', 1)
-                            lcd.display_scrolling('Waiting for GPS signal...', 2, num_scrolls=1)  #3.2 sec execution
+                            buzzer.beep_error()  # 1.2 sec execution
+                            lcd.display(lang.msg_s_updating_time, 1)
+                            lcd.display_scrolling(lang.msg_d_waiting_for_signal, 2, num_scrolls=1)  # 3.2 sec execution
                             time.sleep(0.3)  # to make the total wait time 5 seconds
-                            logger.warning('GPS Signal weak. Waiting 5 '
+                            logger.warning('Weak GPS signal! Waiting 5 '
                                            'seconds for stronger GPS signal...')
                             try:
                                 ser.reset_input_buffer()
@@ -82,15 +94,15 @@ if __name__ == '__main__':
             time.sleep(2)
             buzzer.beep_error()  # 1.2 sec execution
             time.sleep(1)
-            lcd.display('GPS signal loss ', 1)
-            lcd.display_scrolling('Please connect the GPS Sensor', 2, num_scrolls=1)  # 4 sec execution
+            lcd.display(lang.msg_s_gps_signal_loss, 1)
+            lcd.display_scrolling(lang.msg_d_connect_gps, 2, num_scrolls=1)  # ~4 sec execution
             logger.warning('GPS Signal not found. Waiting 10 seconds for GPS signal...')
             time.sleep(1.8)  # to make the total wait time 10 seconds
         else:
             logger.info('GPS Time update finished successfully.')
             buzzer.beep()
-            lcd.display_scrolling('Done - GPS Time Updated', 2, num_scrolls=1)
-            lcd.display_scrolling('{} 20{} UTC'.format(_time[:5], _date), 2, num_scrolls=2)
+            lcd.display_scrolling(lang.msg_d_gps_time_updated, 2, num_scrolls=1)
+            lcd.display_scrolling(lang.msg_d_timestamp.format(_time[:5], _date), 2, num_scrolls=2)
             time.sleep(2)
 
             buzzer.beep_exit()

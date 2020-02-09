@@ -1,27 +1,24 @@
 import time
 import RPi.GPIO as GPIO
 
-class Buzzer():
+
+class Buzzer:
 
     def __init__(self, pin=13):
         self.pin = pin
         GPIO.setmode(GPIO.BOARD)
         GPIO.setup(self.pin, GPIO.OUT, initial=GPIO.LOW)
 
-
     def __repr__(self):
         return 'Buzzer set up on pin {} of the Raspberry Pi board.'.format(self.pin)
-
 
     def high(self):
         """Sets the buzzer high."""
         GPIO.output(self.pin, GPIO.HIGH)
 
-
     def low(self):
         """Sets the buzzer low."""
         GPIO.output(self.pin, GPIO.LOW)
-
 
     def beep(self):
         """
@@ -31,7 +28,6 @@ class Buzzer():
         self.high()
         time.sleep(0.1)
         self.low()
-
 
     def beep_for(self, number_of_seconds):
         """
@@ -43,7 +39,6 @@ class Buzzer():
         time.sleep(number_of_seconds)
         self.low()
 
-
     def beep_exit(self):
         """
         Two short buzzer sounds.
@@ -52,7 +47,6 @@ class Buzzer():
         self.beep()
         time.sleep(0.1)
         self.beep()
-
 
     def beep_error(self):
         """
@@ -66,7 +60,6 @@ class Buzzer():
         self.high()
         time.sleep(0.8)
         self.low()
-
 
     def clear(self):
         """Cleans up the GPIO channels."""

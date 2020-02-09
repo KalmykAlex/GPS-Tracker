@@ -4,11 +4,10 @@ sys.path.insert(1, '/home/pi/trackman/GPS-Tracker/lcd')
 import lcddriver
 
 
-class Lcd():
+class Lcd:
 
     def __init__(self):
         self.display_ = lcddriver.lcd()
-
 
     def display(self, text, line):
         """
@@ -16,7 +15,6 @@ class Lcd():
         Return: function to display text on lcd display
         """
         self.display_.lcd_display_string(text, line)
-
 
     def display_scrolling(self, text, line, num_scrolls=3, num_cols=16):
         """
@@ -26,7 +24,7 @@ class Lcd():
         Execution time: 1 + (len(text)-16)*0.2 + 0.4
         """
         for _ in range(num_scrolls):
-            if(len(text) > num_cols):
+            if len(text) > num_cols:
                 self.display_.lcd_display_string(text[:num_cols], line)
                 time.sleep(1)
                 for i in range(len(text) - num_cols + 1):
@@ -36,7 +34,6 @@ class Lcd():
                 time.sleep(0.4)
             else:
                 self.display_.lcd_display_string(text, line)
-
 
     def clear(self):
         self.display_.lcd_clear()
