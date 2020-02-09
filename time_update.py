@@ -13,13 +13,13 @@ import languages
 
 
 supported_languages = {'en': 'English', 'ro': 'Romanian'}
-LANGUAGE = 'en'
+LANGUAGE = 'ro'
 
 # Language select
-if supported_languages[LANGUAGE] == 'English':
-    lang = languages.English()
-elif supported_languages[LANGUAGE] == 'Romanian':
+if supported_languages[LANGUAGE] == 'Romanian':
     lang = languages.Romanian()
+else:
+    lang = languages.English()
 
 
 BASE_DIR = '/home/pi/trackman/GPS-Tracker/'
@@ -29,12 +29,13 @@ logging.basicConfig(filename=BASE_DIR+'logs/system_logs/time_update.log',
                     level=logging.DEBUG)
 logger = logging.getLogger()
 
+
 def get_gps_port(manufacturer):
     """Gets the serial port on which the GPS sensor is transmitting data."""
     try:
-        for port in list_ports.comports():
+        for com_port in list_ports.comports():
             if manufacturer in port.manufacturer:
-                return '/dev/' + port.name
+                return '/dev/' + com_port.name
     except TypeError:
         logger.error('Port for {} device not found.'.format(manufacturer))
 
