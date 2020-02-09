@@ -46,7 +46,7 @@ def get_gps_port(manufacturer):
     """Gets the serial port on which the GPS sensor is transmitting data."""
     try:
         for com_port in list_ports.comports():
-            if manufacturer in port.manufacturer:
+            if manufacturer in com_port.manufacturer:
                 return '/dev/' + com_port.name
     except TypeError:
         logger.error('Port for {} device not found.'.format(manufacturer))
@@ -58,8 +58,8 @@ def read_card(event, out_queue):
     while True:
         try:
             _id, info = reader.read()
-            out_queue.put(card_id)
-            print('- Card Read. ID: {} INFO: {}'.format(card_id, info if info else 'not filled'))  # TODO: remove
+            out_queue.put(_id)
+            print('- Card Read. ID: {} INFO: {}'.format(_id, info if info else 'not filled'))  # TODO: remove
             logger.info('RC522 Card Read. ID: {} INFO: {}'
                         .format(_id, info if info else 'not filled'))
             event.set()
@@ -82,6 +82,7 @@ if __name__ == '__main__':
     route = {}
     lcd = Lcd()
     buzzer = Buzzer()
+    routes_log_was_read = False
     # TODO: to replace with actual card ID's stored in a postgresql database
     card_db = ['780870559455', '142189814135']
 
@@ -183,19 +184,20 @@ if __name__ == '__main__':
 
                             else:
                                 # Making sure the System is Fail Proof on Power Outage
-                                try:
-                                    with open(gps_logs_folder + 'routes.log', 'r') as global_routelog:
-                                        # get last route id from global routelog
-                                        global_routelog_data = global_routelog.read().splitlines()
-                                        last_route_id = json.loads(global_routelog_data[-1])['route_id']
+                                if not routes_log_was_read:
+                                    try:
+                                        with open(gps_logs_folder + 'routes.log', 'r') as global_routelog:
+                                            last_routelog = global_routelog.readlines()[-1].strip()
+                                    except FileNotFoundError:
+                                        route_id = 1
+                                    else:
+                                        last_route_id = json.loads(last_routelog)['route_id']
                                         route_id = last_route_id + 1
+                                    finally:
+                                        routes_log_was_read = True
+                                        route.update({'route_id': route_id})
                                         # TODO: remove following print
-                                        print('Last route ID: {}. Current route ID: {}'.format(last_route_id, route_id))
-
-                                except FileNotFoundError:
-                                    route_id = 1
-                                finally:
-                                    route.update({'route_id': route_id})
+                                        print('Current route ID: {}'.format(route_id))
 
                                 if route_id in [int(_.split('_')[1]) for _ in os.listdir(gps_logs_folder + 'routes/')]:
                                     # TODO: remove following print
@@ -227,6 +229,9 @@ if __name__ == '__main__':
                                         last_lat = float(lines[-1].split(',')[1])
                                         last_lon = float(lines[-1].split(',')[2])
                                         last_two_coordinates = [[last_lat, last_lon]]
+
+                                    route_id += 1  # not to enter this if again
+
                                 else:
                                     # Informing user of inactive jouney
                                     lcd.display(lang.msg_s_inactive_route, 1)
@@ -275,7 +280,7 @@ if __name__ == '__main__':
                                             lcd.clear()
                                             lcd.display(lang.msg_s_end_of_route, 1)
                                             buzzer.beep_exit()
-                                            lcd.display(lang.msg_s_distance.format(round(total_distance)), 2)
+                                            lcd.display(lang.msg_s_distance.format(round(total_distance/1000, 2)), 2)
                                             time.sleep(WAIT_TIME)
 
                                             # Stop Route Parameters
@@ -284,7 +289,7 @@ if __name__ == '__main__':
                                                 ('timestamp_stop', timestamp),
                                                 ('lat_stop', lat),
                                                 ('lon_stop', lon),
-                                                ('distance', round(total_distance))  # TODO: m to km
+                                                ('distance', round(total_distance/1000, 2))  # TODO: m to km
                                             ])
 
                                             total_distance = 0  # resetting total distance at end of journey

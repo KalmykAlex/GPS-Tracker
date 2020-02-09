@@ -34,7 +34,7 @@ def get_gps_port(manufacturer):
     """Gets the serial port on which the GPS sensor is transmitting data."""
     try:
         for com_port in list_ports.comports():
-            if manufacturer in port.manufacturer:
+            if manufacturer in com_port.manufacturer:
                 return '/dev/' + com_port.name
     except TypeError:
         logger.error('Port for {} device not found.'.format(manufacturer))
