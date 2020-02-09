@@ -290,6 +290,8 @@ if __name__ == '__main__':
                                             # Creating Global Routes Logging File
                                             with open(gps_logs_folder + 'routes.log', 'a') as global_routelog:
                                                 global_routelog.write(json.dumps(route) + '\n')
+                                                global_routelog.flush()
+                                                os.fsync(global_routelog)
                                         else:
                                             # TODO: ring buzzer and flash RED LED to
                                             #  indicate invalid card read for end of journey
