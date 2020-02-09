@@ -218,8 +218,8 @@ if __name__ == '__main__':
                                         total_distance = float(lines[-1].split(',')[-1])
                                         route.update([
                                             ('timestamp_start', lines[1].split(',')[0]),
-                                            ('lat_start', lines[1].split(',')[1]),
-                                            ('lon_start', lines[1].split(',')[2]),
+                                            ('lat_start', float(lines[1].split(',')[1])),
+                                            ('lon_start', float(lines[1].split(',')[2])),
                                         ])
                                         # Resuming Distance Calculation
                                         last_lat = float(lines[-1].split(',')[1])
