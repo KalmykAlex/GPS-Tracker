@@ -159,8 +159,7 @@ if __name__ == '__main__':
                             if journey_state:
                                 routelog_exists = os.path.isfile(gps_logs_folder + 'routes/route_{}_{}.csv'
                                                                  .format(route_id, user_id))
-                                with open(gps_logs_folder + 'routes/route_{}_{}.csv'
-                                        .format(route_id, user_id), 'a') as routelog:
+                                with open(gps_logs_folder + 'routes/route_{}_{}.csv'.format(route_id, user_id), 'a') as routelog:
                                     print('{}, {}, {}, {}'.format(timestamp, lat, lon, total_distance))  # TODO: remove
                                     headers = ['Timestamp', 'Latitude', 'Longitude', 'Total_Distance']
                                     writer = csv.DictWriter(routelog, delimiter=',',
@@ -184,23 +183,21 @@ if __name__ == '__main__':
 
                             else:
                                 # Making sure the System is Fail Proof on Power Outage
-                                if not routes_log_was_read:
-                                    try:
-                                        with open(gps_logs_folder + 'routes.log', 'r') as global_routelog:
-                                            last_routelog = global_routelog.readlines()[-1].strip()
-                                    except FileNotFoundError:
-                                        route_id = 1
-                                    else:
+                                try:
+                                    with open(gps_logs_folder + 'routes.log', 'r') as global_routelog:
+                                        last_routelog = global_routelog.readlines()[-1].strip()
                                         last_route_id = json.loads(last_routelog)['route_id']
                                         route_id = last_route_id + 1
-                                    finally:
-                                        routes_log_was_read = True
-                                        route.update({'route_id': route_id})
-                                        # TODO: remove following print
-                                        print('Current route ID: {}'.format(route_id))
+                                except FileNotFoundError:
+                                    route_id = 1
+                                finally:
+                                    route.update({'route_id': route_id})
+                                    # TODO: remove following print
+                                    print('Current route ID: {}'.format(route_id))
 
                                 if route_id in [int(_.split('_')[1]) for _ in os.listdir(gps_logs_folder + 'routes/')]:
                                     # TODO: remove following print
+                                    print(route_id)
                                     print('Unexpected Script termination detected. Rebuilding route parameters.')
                                     logger.warning('Unexpected Script termination detected. '
                                                    'Rebuilding route parameters.')
@@ -210,14 +207,11 @@ if __name__ == '__main__':
                                     lcd.display_scrolling(lang.msg_d_unexpected_termination, 2, num_scrolls=1)
 
                                     # Automatically resume the journey of last user_id validated card
-                                    user_id = os.path.basename(
-                                        glob.glob(gps_logs_folder + 'routes/route_{}_*'
-                                                  .format(route_id))[0]).split('_')[-1].split('.')[0]
+                                    user_id = os.path.basename(glob.glob(gps_logs_folder + 'routes/route_{}_*'.format(route_id))[0]).split('_')[-1].split('.')[0]
                                     journey_state = True
 
                                     # Rebuilding Route Parameters
-                                    with open(gps_logs_folder + 'routes/route_{}_{}.csv'
-                                            .format(route_id, user_id)) as file:
+                                    with open(gps_logs_folder + 'routes/route_{}_{}.csv'.format(route_id, user_id)) as file:
                                         lines = file.read().splitlines()
                                         total_distance = float(lines[-1].split(',')[-1])
                                         route.update([
@@ -230,7 +224,6 @@ if __name__ == '__main__':
                                         last_lon = float(lines[-1].split(',')[2])
                                         last_two_coordinates = [[last_lat, last_lon]]
 
-                                    route_id += 1  # not to enter this if again
 
                                 else:
                                     # Informing user of inactive jouney
@@ -289,7 +282,7 @@ if __name__ == '__main__':
                                                 ('timestamp_stop', timestamp),
                                                 ('lat_stop', lat),
                                                 ('lon_stop', lon),
-                                                ('distance', round(total_distance/1000, 2))  # TODO: m to km
+                                                ('distance', round(total_distance/1000, 2))
                                             ])
 
                                             total_distance = 0  # resetting total distance at end of journey
