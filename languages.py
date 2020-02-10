@@ -76,7 +76,7 @@ class Hungarian:
         self.msg_s_active_route = 'Utvonal: AKTIV   '
         self.msg_s_inactive_route = 'Utvonal: TETLEN '
         self.msg_s_swipe_to_start = 'Kartya var      '
-        self.msg_s_distance = 'tavolsag:{}km'
+        self.msg_s_distance = 'tavolsag:{}km  '
         self.msg_s_wait = 'VARJON!          '
         self.msg_d_unexpected_termination = 'Varatlan leallast eszleltek. Folytatja az utolso utvonalat'
         self.msg_s_card_read = 'Kartya Olvasni! '
