@@ -12,8 +12,7 @@ SPEED=`ethtool eth0 | grep -i "Speed" | awk '{print $2}' | grep -o '[0-9]*'`
 if ifconfig | grep -i "eth0" > /dev/null 2>&1; then
     if [ $SPEED == 100 ]; then
         # Ethernet connection OK
-        echo "Ethernet OK, starting api"
-        sudo python3 $base_dir/api.py & >> $base_dir/logs/system_logs/api.log
+        sudo python3 $base_dir/api.py &>> $base_dir/logs/system_logs/api.log
     else
         # No cable connected
         sudo python3 $base_dir/time_update.py
