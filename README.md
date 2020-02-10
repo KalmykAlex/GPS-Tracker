@@ -179,6 +179,7 @@ The CSV file contains the timestamp, latitude, longitude and total_distance.
 - global routes log that is used for generating route reports
 - LCD Display and Buzzer for system feedback
 - Rest API for GPS routes
+- added support for 3 languages: english, romanian and hungarian
 
 ### Features to be added
 
