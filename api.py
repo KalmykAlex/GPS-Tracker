@@ -17,6 +17,7 @@ api = Api(app)
 
 routes_file = '/home/pi/trackman/GPS-Tracker/logs/gps_logs/routes.log'
 HOST_IP = check_output(['hostname', '--all-ip-addresses']).decode('ascii').strip()
+PORT = '5000'
 
 
 def get_all_routes_data():
@@ -60,7 +61,6 @@ if __name__ == '__main__':
 
     lcd = Lcd()
     buzzer = Buzzer()
-    PORT = '5000'
 
     buzzer.beep()
 
