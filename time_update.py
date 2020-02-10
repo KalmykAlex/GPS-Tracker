@@ -13,7 +13,7 @@ import languages
 
 
 supported_languages = {'en': 'English', 'ro': 'Romanian', 'hu': 'Hungarian'}
-LANGUAGE = 'hu'
+LANGUAGE = 'ro'
 
 # Language select
 if supported_languages[LANGUAGE] == 'Romanian':
