@@ -12,12 +12,14 @@ from buzzer_functions import Buzzer
 import languages
 
 
-supported_languages = {'en': 'English', 'ro': 'Romanian'}
-LANGUAGE = 'ro'
+supported_languages = {'en': 'English', 'ro': 'Romanian', 'hu': 'Hungarian'}
+LANGUAGE = 'hu'
 
 # Language select
 if supported_languages[LANGUAGE] == 'Romanian':
     lang = languages.Romanian()
+elif supported_languages[LANGUAGE] == 'Hungarian':
+    lang = languages.Hungarian()
 else:
     lang = languages.English()
 
