@@ -188,5 +188,6 @@ The CSV file contains the timestamp, latitude, longitude and total_distance.
 - adding led indicator for better debugging
 - adding a buzzer tone in the case of movement without card readings (as fail-safe)
 - database for card users and card id's
+- new card registration with master card
 - unit tests for the app (with pytest module)
  

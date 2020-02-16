@@ -2,7 +2,7 @@
 
 import json
 from flask import Flask, request, jsonify, abort
-from flask_restful import Resource, Api
+from flask_restful import Api
 from subprocess import check_output
 
 # From current directory (lcd_functions.py and buzzer_functions.py)
@@ -35,10 +35,9 @@ def get_routes_data_by_param(params_dict):
         for line in rf:
             if str(json.loads(line)[key]) == str(value):
                 results.append(json.loads(line))
-    if results == []:
+    if not results:
         abort(404)
     return jsonify(results)
-
 
 
 @app.route('/routes', methods=['GET'])
