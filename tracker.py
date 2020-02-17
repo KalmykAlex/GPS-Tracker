@@ -131,7 +131,8 @@ while True:  # to run even if a port disconnect error is raised
                             logger.info('System time has been set to: {}'.format(timestamp))
                             buzzer.beep()
                             lcd.display(lang.msg_s_updating_time, 1)
-                            lcd.display_scrolling(lang.msg_d_gps_time_updated, 2, num_scrolls=1)
+                            lcd.display(lang.msg_s_gps_time_updated, 2)
+                            time.sleep(1)
                             lcd.display_scrolling(lang.msg_d_timestamp.format(_time[:5], _date), 2, num_scrolls=2)
                             time.sleep(1)
                             system_time_set = True
@@ -141,8 +142,8 @@ while True:  # to run even if a port disconnect error is raised
                         lcd.display(lang.msg_s_weak_gps, 1)
                         buzzer.beep_for(0.8)
                         lcd.display_scrolling(lang.msg_d_waiting_for_signal, 2, num_scrolls=1)  #~4.2 sec execution
-                        print('Weak GPS signal! Waiting 5 seconds for stronger signal...')  # TODO: remove
-                        logger.warning('Weak GPS signal! Waiting 5 seconds for stronger signal...')
+                        print('Weak GPS signal! Waiting for stronger signal...')  # TODO: remove
+                        logger.warning('Weak GPS signal! Waiting for stronger signal...')
                         try:
                             ser.reset_input_buffer()
                         except:
@@ -318,7 +319,8 @@ while True:  # to run even if a port disconnect error is raised
                                         # signaling wrong card to end journey read
                                         lcd.display(lang.msg_s_warning, 1)
                                         buzzer.high()
-                                        lcd.display_scrolling(lang.msg_d_wrong_card, 2, num_scrolls=1)
+                                        lcd.display(lang.msg_s_wrong_card, 2)
+                                        time.sleep(1)
                                         buzzer.low()
 
                             print('-- Journey State: {}.'.format(journey_state))
@@ -329,9 +331,9 @@ while True:  # to run even if a port disconnect error is raised
     except IOError as err:
         # TODO: flash red led to indicate lack of GPS sensor
         print(err)  # TODO: remove
-        print('GPS signal not found. Waiting 10 seconds for GPS signal...')  # TODO: remove
+        print('GPS signal not found. Waiting for GPS signal...')  # TODO: remove
         buzzer.beep_error()  # 1.2 sec execution
         lcd.display(lang.msg_s_error, 1)
-        lcd.display_scrolling(lang.msg_d_connect_gps, 2, num_scrolls=1)  # ~3.2 sec execution
-        logger.warning('GPS signal not found. Waiting 10 seconds for GPS signal...')
-        time.sleep(5.6)  # Waiting for GPS device to reconnect
+        lcd.display_scrolling(lang.msg_d_connect_gps, 2, num_scrolls=1)  # ~2.6 sec execution
+        logger.warning('GPS signal not found. Waiting for GPS signal...')
+
