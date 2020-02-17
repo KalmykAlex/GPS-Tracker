@@ -100,7 +100,6 @@ time.sleep(0.5)
 logger.info('Starting GPS Time Update.')
 lcd.display(lang.msg_s_updating_time, 1)
 lcd.display(lang.msg_s_starting, 2)
-buzzer.beep_for(0.5)
 
 read_card_thread.start()
 while True:  # to run even if a port disconnect error is raised
@@ -131,6 +130,7 @@ while True:  # to run even if a port disconnect error is raised
                             subprocess.call(['sudo date -s "{}"'.format(_date + ' '+ _time)], shell=True)
                             logger.info('System time has been set to: {}'.format(timestamp))
                             buzzer.beep()
+                            lcd.display(lang.msg_s_updating_time, 1)
                             lcd.display_scrolling(lang.msg_d_gps_time_updated, 2, num_scrolls=1)
                             lcd.display_scrolling(lang.msg_d_timestamp.format(_time[:5], _date), 2, num_scrolls=2)
                             time.sleep(1)
