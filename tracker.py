@@ -78,7 +78,6 @@ system_time_set = False
 last_two_coordinates = []
 total_distance = 0
 route = {}
-routes_log_was_read = False
 # TODO: to replace with actual card ID's stored in a postgresql database
 card_db = ['780870559455', '142189814135']
 lcd = Lcd()
@@ -119,15 +118,15 @@ while True:  # to run even if a port disconnect error is raised
                 gps_raw_data = ser.readline()
 
                 if gps_raw_data[3:6] == b'RMC':
+                    gps_data = str(gps_raw_data).split(',')
                     try:
-                        gps_data = str(gps_raw_data).split(',')
                         lat = round(float(gps_data[3][:2]) + float(gps_data[3][2:])/60, 6)
                         lon = round(float(gps_data[5][:3]) + float(gps_data[5][3:])/60, 6)
                         _date = gps_data[9][4:6] + '-' + gps_data[9][2:4] + '-' + gps_data[9][:2]
                         _time = gps_data[1][:2] + ':' + gps_data[1][2:4] + ':' + gps_data[1][4:6]
                         timestamp = '20' + _date + 'T' + _time + 'Z'
 
-                        #Set system time
+                        # Set system time
                         if not system_time_set:
                             subprocess.call(['sudo date -s "{}"'.format(_date + ' '+ _time)], shell=True)
                             logger.info('System time has been set to: {}'.format(timestamp))
@@ -137,7 +136,7 @@ while True:  # to run even if a port disconnect error is raised
                             time.sleep(1)
                             system_time_set = True
 
-                    except Exception:
+                    except ValueError:
                         # TODO: flash red led to indicate weak GPS signal
                         lcd.display(lang.msg_s_weak_gps, 1)
                         buzzer.beep_for(0.8)
@@ -151,7 +150,6 @@ while True:  # to run even if a port disconnect error is raised
                             pass
                     else:
                         # TODO: turn on green led to indicate good GPS signal
-
                         # calculate the distance between 2 consecutive coordinates
                         if journey_state:
                             last_two_coordinates.append([lat, lon])
@@ -238,7 +236,6 @@ while True:  # to run even if a port disconnect error is raised
                                     last_lat = float(lines[-1].split(',')[1])
                                     last_lon = float(lines[-1].split(',')[2])
                                     last_two_coordinates = [[last_lat, last_lon]]
-
 
                             else:
                                 # Informing user of inactive jouney
