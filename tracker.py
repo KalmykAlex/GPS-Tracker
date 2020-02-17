@@ -35,7 +35,7 @@ else:
     lang = languages.English()
 
 
-BASE_DIR = '$HOME/trackman/GPS-Tracker/'
+BASE_DIR = '/home/pi/trackman/GPS-Tracker/'
 
 # Logging configuration
 logging.basicConfig(filename=BASE_DIR+'logs/system_logs/tracker.log',
@@ -134,7 +134,7 @@ while True:  # to run even if a port disconnect error is raised
                             buzzer.beep()
                             lcd.display_scrolling(lang.msg_d_gps_time_updated, 2, num_scrolls=1)
                             lcd.display_scrolling(lang.msg_d_timestamp.format(_time[:5], _date), 2, num_scrolls=2)
-                            time.sleep(2)
+                            time.sleep(1)
                             system_time_set = True
 
                     except Exception:
@@ -194,7 +194,7 @@ while True:  # to run even if a port disconnect error is raised
 
                                 # Informs user of journey state and distance
                                 lcd.display(lang.msg_s_active_route, 1)
-                                lcd.display(lang.msg_s_distance.format(round(total_distance/1000, 1)), 2)
+                                lcd.display(lang.msg_s_distance.format(round(total_distance/1000, 2)), 2)
 
                         else:
                             # Making sure the System is Fail Proof on Power Outage
