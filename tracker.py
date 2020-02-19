@@ -127,7 +127,7 @@ while True:  # to run even if a port disconnect error is raised
 
                         # Set system time
                         if not system_time_set:
-                            subprocess.call(['sudo date -s "{}"'.format(_date + ' '+ _time)], shell=True)
+                            subprocess.call(['sudo date -s "{}"'.format(_date + ' ' + _time)], shell=True)
                             logger.info('System time has been set to: {}'.format(timestamp))
                             buzzer.beep()
                             lcd.display(lang.msg_s_updating_time, 1)
@@ -141,7 +141,7 @@ while True:  # to run even if a port disconnect error is raised
                         # TODO: flash red led to indicate weak GPS signal
                         lcd.display(lang.msg_s_weak_gps, 1)
                         buzzer.beep_for(0.8)
-                        lcd.display_scrolling(lang.msg_d_waiting_for_signal, 2, num_scrolls=1)  #~4.2 sec execution
+                        lcd.display_scrolling(lang.msg_d_waiting_for_signal, 2, num_scrolls=1)  # ~4.2 sec execution
                         print('Weak GPS signal! Waiting for stronger signal...')  # TODO: remove
                         logger.warning('Weak GPS signal! Waiting for stronger signal...')
                         try:
