@@ -10,6 +10,7 @@ import subprocess
 import logging
 import threading
 import queue
+import termios
 
 from geopy.distance import geodesic
 from serial.tools import list_ports
@@ -109,8 +110,6 @@ while True:  # to run even if a port disconnect error is raised
 
     try:
         with serial.Serial(port) as ser:
-            ser.reset_input_buffer()
-
             while True:
 
                 # Read from GPS Sensor and log info
@@ -145,9 +144,9 @@ while True:  # to run even if a port disconnect error is raised
                         print('Weak GPS signal! Waiting for stronger signal...')  # TODO: remove
                         logger.warning('Weak GPS signal! Waiting for stronger signal...')
                         try:
-                            ser.reset_input_buffer()
-                        except:
-                            # I/O error silencing
+                            ser.reset_input_buffer() # to clear input buffer every 5 seconds (faster)
+                        except termios.error:
+                            # in case of port disconnect while flushing input buffer
                             pass
                     else:
                         # TODO: turn on green led to indicate good GPS signal
