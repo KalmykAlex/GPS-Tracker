@@ -4,6 +4,7 @@ import queue
 from mfrc522 import SimpleMFRC522
 from geopy.distance import geodesic
 from serial.tools import list_ports
+from collections import deque
 
 import time
 
@@ -12,27 +13,33 @@ class RFID(threading.Thread):
     """Signaling Thread"""
     reader = SimpleMFRC522()
     id_queue = queue.Queue()
-    start_event = threading.Event()
-    stop_event = threading.Event()
+    start_signal = threading.Semaphore(0)
+    stop_signal = threading.Semaphore(0)
+    id_database = ['780870559455', '142189814135']
 
     def __init__(self):
         threading.Thread.__init__(self)
 
     def run(self):
         global shutdown
+        id_list = deque(maxlen=2)
         while not shutdown:
-            _id, info = self.reader.read()
-            self.id_queue.put(_id)
-            # Set appropriate events depending on state
-            if not self.start_event.is_set():
-                self.start_event.set()
-            elif not self.stop_event.is_set():
-                self.stop_event.set()
-            else:
-                self.start_event.clear()
-                self.stop_event.clear()
-            time.sleep(5)
-
+            id_list.append(self.reader.read_id())  # blocking
+            if len(id_list) == 1:
+                print('Start Route')
+                self.start_signal.release()
+            if not all([id in self.id_database for id in id_list]):
+                id_list.pop()
+                print('Invalid Card')
+            if len(set(id_list)) == 2:
+                id_list.pop()
+                print('Wrong Card')
+            if len(id_list) == 2:
+                id_list.clear()
+                print('Stop Route')
+                self.stop_signal.release()
+            print(id_list)
+            time.sleep(3)
 
 class GPS(threading.Thread):
     """Producer Thread"""
@@ -77,18 +84,16 @@ class GPS(threading.Thread):
                 return port.device
 
 
-class Journey(threading.Thread):
-    """Consumer Thread"""
+class Journey:
     global shutdown
     gps_buffer = []
 
-    def __init__(self, id_queue, data_queue, start_event, stop_event):
-        threading.Thread.__init__(self)
-        start_event.wait()
-        self.start = start_event
-        self.stop = stop_event
-        self.user_id = id_queue.get()
+    def __init__(self, id_queue, data_queue, start_signal, stop_signal):
+        self.start_signal = start_signal
+        self.stop_signal = stop_signal
         self.data_queue = data_queue
+        self.id_queue = id_queue
+        self.user_id = None
         self.timestamp_start = None
         self.timestamp_stop = None
         self.lat_start = None
@@ -100,20 +105,21 @@ class Journey(threading.Thread):
     def run(self):
         while not shutdown:
 
-            if self.start.is_set():
-                self.gps_buffer.append(self.data_queue.get())
-                if any([self.timestamp_start, self.lat_start, self.lon_start]) is None:
-                    self.timestamp_start = self.gps_buffer[0][0]
-                    self.lat_start = self.gps_buffer[0][1]
-                    self.lon_start = self.gps_buffer[0][2]
-                self.total_distance = self.calculate_distance(self.gps_buffer,
-                                                              self.total_distance)
-                self.data_queue.task_done()
-            elif self.stop.is_set():
-                if any([self.timestamp_stop, self.lat_stop, self.lon_stop]) is None:
-                    self.timestamp_stop = self.gps_buffer[1][0]
-                    self.lat_stop = self.gps_buffer[1][1]
-                    self.lon_stop = self.gps_buffer[1][1]
+            self.start_signal.acquire()
+            self.gps_buffer.append(self.data_queue.get())
+            if any([self.timestamp_start, self.lat_start, self.lon_start]) is None:
+                self.timestamp_start = self.gps_buffer[0][0]
+                self.lat_start = self.gps_buffer[0][1]
+                self.lon_start = self.gps_buffer[0][2]
+            self.total_distance = self.calculate_distance(self.gps_buffer,
+                                                          self.total_distance)
+            self.data_queue.task_done()
+
+            self.stop_signal.acquire()
+            if any([self.timestamp_stop, self.lat_stop, self.lon_stop]) is None:
+                self.timestamp_stop = self.gps_buffer[1][0]
+                self.lat_stop = self.gps_buffer[1][1]
+                self.lon_stop = self.gps_buffer[1][1]
             return {'user_id':         self.user_id,
                     'timestamp_start': self.timestamp_start,
                     'lat_start':       self.lat_start,
@@ -138,9 +144,9 @@ class Journey(threading.Thread):
 shutdown = False
 read = GPS()
 rfid = RFID()
-journey = Journey(rfid.id_queue, read.data_queue, rfid.start_event, rfid.stop_event)
+journey = Journey(rfid.id_queue, read.data_queue, rfid.start_signal, rfid.stop_signal)
 
 read.start()
-time.sleep(10)
+journey.run()
 shutdown = True
 read.join()
