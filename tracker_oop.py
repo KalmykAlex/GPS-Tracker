@@ -203,8 +203,10 @@ class Journey:
 
             self.__route_to_json()
 
+            # Cleanup
             self.gps_buffer.clear()
             self.total_distance = 0
+            self.route_id = None
 
     @staticmethod
     def calculate_distance(gps_data, total_distance):
