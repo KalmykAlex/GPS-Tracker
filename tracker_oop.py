@@ -21,15 +21,16 @@ class RFID(threading.Thread):
     stop_signal = threading.Semaphore(0)
     id_database = [780870559455, 142189814135]
 
-    def __init__(self):
+    def __init__(self, unexpected_shutdown_event):
         threading.Thread.__init__(self)
+        self.unexpected_shutdown = unexpected_shutdown_event
 
     def run(self):
         global shutdown
         id_list = deque(maxlen=2)
         while not shutdown:
             id_list.append(self.reader.read_id())  # blocking
-            if len(id_list) == 1:
+            if len(id_list) == 1 and not self.unexpected_shutdown.is_set():
                 print('Start Route')
                 self.id_queue.put(id_list[0])
                 self.start_signal.release()
@@ -39,9 +40,10 @@ class RFID(threading.Thread):
             if len(set(id_list)) == 2:
                 id_list.pop()
                 print('Wrong Card')
-            if len(id_list) == 2:
+            if len(id_list) == 2 or self.unexpected_shutdown.is_set():
                 id_list.clear()
                 print('Stop Route')
+                self.unexpected_shutdown.clear()
                 self.stop_signal.release()
             time.sleep(3)
 
@@ -99,7 +101,7 @@ class Journey:
     root_dir = '/home/pi/trackman/GPS-Tracker/'
     gps_logs_folder = root_dir + 'logs/gps_logs/'
 
-    def __init__(self, id_queue, data_queue, start_signal, stop_signal):
+    def __init__(self, id_queue, data_queue, start_signal, stop_signal, unexpected_shutdown_event):
         self.start_signal = start_signal
         self.stop_signal = stop_signal
         self.data_queue = data_queue
@@ -109,7 +111,7 @@ class Journey:
         self.timestamp_start, self.lat_start, self.lon_start = [None, None, None]
         self.timestamp_stop, self.lat_stop, self.lon_stop = [None, None, None]
         self.timestamp, self.lat, self.lon = [None, None, None]
-        self.route_id = self.__init_route_id()
+        self.unexpected_shutdown = unexpected_shutdown_event
 
     def __init_route_id(self):
         try:
@@ -123,12 +125,12 @@ class Journey:
 
     def __log_to_csv(self):
         route_filename = f'routes/route_{self.route_id}_{self.user_id}.csv'
+        route_log_exists = os.path.isfile(self.gps_logs_folder + route_filename)
         with open(self.gps_logs_folder + route_filename, 'a') as route_log:
             headers = ['Timestamp', 'Latitude', 'Longitude', 'Total_Distance']
             writer = csv.DictWriter(route_log, delimiter=',',
                                     lineterminator='\n',
                                     fieldnames=headers)
-            route_log_exists = os.path.isfile(self.gps_logs_folder + route_filename)
             if not route_log_exists:
                 writer.writeheader()
             writer.writerow({
@@ -148,6 +150,7 @@ class Journey:
             return False
 
     def __fix_unexpected_shutdown(self):
+        self.unexpected_shutdown.set()
         routes_folder = self.gps_logs_folder + 'routes/'
         self.user_id = os.path.basename(
             glob.glob(routes_folder + f'route_{self.route_id}_*')[0]) \
@@ -182,6 +185,7 @@ class Journey:
 
     def run(self):
         while not shutdown:
+            self.route_id = self.__init_route_id()
             if self.__check_unexpected_shutdown():
                 self.__fix_unexpected_shutdown()
             else:
@@ -228,11 +232,16 @@ class Journey:
 
 if __name__ == '__main__':
     root_dir = '/home/pi/trackman/GPS-Tracker/'
-
+    unexpected_shutdown_event = threading.Event()
     shutdown = False
     read = GPS()
-    rfid = RFID()
-    journey = Journey(rfid.id_queue, read.data_queue, rfid.start_signal, rfid.stop_signal)
+    rfid = RFID(unexpected_shutdown_event)
+    journey = Journey(rfid.id_queue,
+                      read.data_queue,
+                      rfid.start_signal,
+                      rfid.stop_signal,
+                      unexpected_shutdown_event
+                      )
 
     rfid.start()
     read.start()
