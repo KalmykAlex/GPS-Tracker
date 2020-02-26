@@ -8,7 +8,7 @@ import queue
 from mfrc522 import SimpleMFRC522
 from geopy.distance import geodesic
 from serial.tools import list_ports
-from collections import deque, namedtuple
+from collections import deque
 
 import time
 
@@ -106,9 +106,9 @@ class Journey:
         self.id_queue = id_queue
         self.total_distance = 0
         self.user_id = None
-        self.gps_data_start = namedtuple('gps_start_data', ['timestamp', 'lat', 'lon'])
-        self.gps_data_stop = namedtuple('gps_stop_data', ['timestamp', 'lat', 'lon'])
-        self.gps_data = namedtuple('gps_data', ['timestamp', 'lat', 'lon'])
+        self.timestamp_start, self.lat_start, self.lon_start = [None, None, None]
+        self.timestamp_stop, self.lat_stop, self.lon_stop = [None, None, None]
+        self.timestamp, self.lat, self.lon = [None, None, None]
         self.route_id = self.__init_route_id()
 
     def __init_route_id(self):
@@ -132,9 +132,9 @@ class Journey:
             if not route_log_exists:
                 writer.writeheader()
             writer.writerow({
-                'Timestamp': self.gps_data.timestamp,
-                'Latitude':  self.gps_data.lat,
-                'Longitude': self.gps_data.lon,
+                'Timestamp': self.timestamp,
+                'Latitude':  self.lat,
+                'Longitude': self.lon,
                 'Total_Distance': self.total_distance,
             })
             route_log.flush()
@@ -155,11 +155,11 @@ class Journey:
         with open(routes_folder + f'route_{self.route_id}_{self.user_id}.csv') as file:
             lines = file.read().splitlines()
             self.total_distance = float(lines[-1].split(',')[-1])
-            self.gps_data_start.timestamp = lines[1].split(',')[0]
-            self.gps_data_start.lat = float(lines[1].split(',')[1])
-            self.gps_data_start.lon = float(lines[1].split(',')[2])
+            self.timestamp_start = lines[1].split(',')[0]
+            self.lat_start = float(lines[1].split(',')[1])
+            self.lon_start = float(lines[1].split(',')[2])
 
-            self.gps_buffer.append([self.gps_data_start.timestamp,
+            self.gps_buffer.append([self.timestamp_start,
                                     float(lines[-1].split(',')[1]),
                                     float(lines[-1].split(',')[2])
                                     ])
@@ -167,12 +167,12 @@ class Journey:
     def __route_to_json(self):
         route = {'route_id':        self.route_id,
                  'user_id':         self.user_id,
-                 'timestamp_start': self.gps_data_start.timestamp,
-                 'lat_start':       self.gps_data_start.lat,
-                 'lon_start':       self.gps_data_start.lon,
-                 'timestamp_stop':  self.gps_data_stop.timestamp,
-                 'lat_stop':        self.gps_data_stop.lat,
-                 'lon_stop':        self.gps_data_stop.lon,
+                 'timestamp_start': self.timestamp_start,
+                 'lat_start':       self.lat_start,
+                 'lon_start':       self.lon_start,
+                 'timestamp_stop':  self.timestamp_stop,
+                 'lat_stop':        self.lat_stop,
+                 'lon_stop':        self.lon_stop,
                  'distance':        self.total_distance
                  }
         with open(self.gps_logs_folder + 'routes.log', 'a') as routes_log:
@@ -188,18 +188,18 @@ class Journey:
                 self.start_signal.acquire()
                 self.user_id = self.id_queue.get()
                 self.gps_buffer.append(self.data_queue.get())
-                self.gps_data_start = self.gps_buffer[0]
+                self.timestamp_start, self.lat_start, self.lon_start = self.gps_buffer[0]
 
             while not self.stop_signal.acquire(blocking=False):
                 self.gps_buffer.append(self.data_queue.get())
-                self.gps_data = self.gps_buffer[1]
+                self.timestamp, self.lat, self.lon = self.gps_buffer[1]
                 self.__log_to_csv()
                 gps_data = [data[1:] for data in self.gps_buffer]
                 self.total_distance = self.calculate_distance(gps_data, self.total_distance)
                 print('Distance: ', self.total_distance)
 
             self.gps_buffer.append(self.data_queue.get())
-            self.gps_data_stop = self.gps_buffer[1]
+            self.timestamp_stop, self.lat_stop, self.lon_stop = self.gps_buffer[1]
 
             self.__route_to_json()
 
