@@ -162,6 +162,11 @@ class Journey(ShutdownMixin,
             route_id = 1
         return route_id
 
+    def _gps_time_update(self):
+        timestamp = self.data_queue.get()[0]
+        subprocess.call([f'sudo date -s "{timestamp[2:10]} {timestamp[11:-1]}"'], shell=True)
+        logger.info('System time has been set to: {}'.format(timestamp))
+
     def _log_as_csv(self):
         """Create a CSV formatted log unique to each route
         or append route data to an existing route log if an
@@ -236,9 +241,7 @@ class Journey(ShutdownMixin,
     def run(self):
         logger.info('Tracker Started.')
         logger.info('Starting GPS Time Update.')
-        timestamp = self.data_queue.get()[0]
-        subprocess.call([f'sudo date -s "{timestamp[2:10]} {timestamp[11:-1]}"'], shell=True)
-        logger.info('System time has been set to: {}'.format(timestamp))
+        self._gps_time_update()
 
         while not self.shutdown.is_set():
             self.route_id = self._init_route_id()
@@ -287,9 +290,6 @@ class Journey(ShutdownMixin,
             else:
                 del gps_data[1]
             return total_distance
-
-    @staticmethod
-    def gps_time_update
 
 
 if __name__ == '__main__':
