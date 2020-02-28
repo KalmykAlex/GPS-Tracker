@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import csv
 import glob
@@ -128,7 +130,6 @@ class Journey(ShutdownMixin,
               IDQueueMixin,
               DataQueueMixin):
     gps_buffer = deque(maxlen=2)
-    request_data_event = threading.Event()
     root_dir = '/home/pi/trackman/GPS-Tracker/'
     gps_logs_dir = root_dir + 'logs/gps_logs/'
 
@@ -272,8 +273,6 @@ class Journey(ShutdownMixin,
 
 
 if __name__ == '__main__':
-    root_dir = '/home/pi/trackman/GPS-Tracker/'
-    unexpected_shutdown_event = threading.Event()
     read = GPS()
     rfid = RFID()
     journey = Journey()
