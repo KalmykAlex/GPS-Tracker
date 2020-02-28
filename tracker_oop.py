@@ -6,7 +6,9 @@ import glob
 import json
 import time
 import queue
+import logging
 import threading
+import subprocess
 from collections import deque
 
 import serial
@@ -58,19 +60,24 @@ class RFID(threading.Thread,
         id_list = deque(maxlen=2)
         while not self.shutdown.is_set():
             id_list.append(self.reader.read_id())  # blocking
+            logger.info(f'RC522 Card Read. ID: {id_list[0]}.')
             if len(id_list) == 1 and not self.unexpected_shutdown.is_set():
-                print('Start Route')
+                print('Start Route')  # TODO: remove
+                logger.info('Route started.')
                 self.id_queue.put(id_list[0])
                 self.start_signal.release()
             if not all([_id in self.id_database for _id in id_list]):
-                id_list.pop()
-                print('Invalid Card')
+                invalid_card_id = id_list.pop()
+                print('Invalid Card')  # TODO: remove
+                logger.warning(f'RC522: Invalid Card! ID: {invalid_card_id}')
             if len(set(id_list)) == 2:
-                id_list.pop()
-                print('Wrong Card')
+                wrong_card_id = id_list.pop()
+                print('Wrong Card')  # TODO: remove
+                logger.warning(f'RC522: Wrong card to end journey! ID: {wrong_card_id}')
             if len(id_list) == 2 or self.unexpected_shutdown.is_set():
                 id_list.clear()
-                print('Stop Route')
+                print('Stop Route')  # TODO: remove
+                logger.info('Route ended.')
                 self.unexpected_shutdown.clear()
                 self.stop_signal.release()
             time.sleep(3)
@@ -98,7 +105,8 @@ class GPS(threading.Thread,
                         if self.data_queue.full():
                             self.data_queue.get()
         except IOError:
-            print('GPS signal not found.')
+            print('GPS signal not found.')  # TODO: remove
+            logger.warning('GPS signal not found. Waiting for GPS signal...')
 
     @staticmethod
     def extract_parameters(data):
@@ -111,7 +119,8 @@ class GPS(threading.Thread,
             _time = data[1][:2] + ':' + data[1][2:4] + ':' + data[1][4:6]
             timestamp = '20' + _date + 'T' + _time + 'Z'
         except ValueError:
-            print('Waiting for GPS signal...')
+            print('Waiting for GPS signal...')  # TODO: remove
+            logger.warning('Weak GPS signal! Waiting for stronger signal...')
         else:
             return timestamp, lat, lon
 
@@ -225,10 +234,18 @@ class Journey(ShutdownMixin,
             os.fsync(routes_log)
 
     def run(self):
+        logger.info('Tracker Started.')
+        logger.info('Starting GPS Time Update.')
+        timestamp = self.data_queue.get()[0]
+        subprocess.call([f'sudo date -s "{timestamp[2:10]} {timestamp[11:-1]}"'], shell=True)
+        logger.info('System time has been set to: {}'.format(timestamp))
+
         while not self.shutdown.is_set():
             self.route_id = self._init_route_id()
             if self._check_unexpected_shutdown():
                 self._fix_unexpected_shutdown()
+                print('Unexpected shutdown detected. '
+                      'Rebuilding route parameters.')
             else:
                 self.start_signal.acquire()
                 self.user_id = self.id_queue.get()
@@ -271,8 +288,25 @@ class Journey(ShutdownMixin,
                 del gps_data[1]
             return total_distance
 
+    @staticmethod
+    def gps_time_update
+
 
 if __name__ == '__main__':
+
+    # Logging Configuration ###################################################
+
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s: %(levelname)s: %(message)s')
+    formatter.datefmt = '%Y-%m-%dT%H:%M:%SZ'
+    filename = '/home/pi/trackman/GPS-Tracker/logs/system_logs/tracker.log'
+    file_handler = logging.FileHandler(filename=filename)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    ###########################################################################
+
     read = GPS()
     rfid = RFID()
     journey = Journey()
