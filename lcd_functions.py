@@ -4,7 +4,7 @@ sys.path.insert(1, '/home/pi/trackman/GPS-Tracker/lcd')
 import lcddriver
 
 
-class Lcd:
+class LCD:
 
     def __init__(self):
         self.display_ = lcddriver.lcd()

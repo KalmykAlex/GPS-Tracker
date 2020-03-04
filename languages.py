@@ -30,6 +30,7 @@ class English:
         self.msg_s_end_of_route = 'End of Route! '
         self.msg_s_warning = 'WARNING!        '
         self.msg_s_wrong_card = 'Wrong Card!     '
+        self.msg_s_start_route = 'Starting Route  '
 
 
 class Romanian:
@@ -58,6 +59,7 @@ class Romanian:
         self.msg_s_end_of_route = 'Starsitul Rutei!'
         self.msg_s_warning = 'ATENTIE!        '
         self.msg_s_wrong_card = 'Card gresit!    '
+        self.msg_s_start_route = 'Porneste Ruta   '
 
 
 class Hungarian:
@@ -86,3 +88,4 @@ class Hungarian:
         self.msg_s_end_of_route = 'Utvonal Vege! '
         self.msg_s_warning = 'FIGYELEM!        '
         self.msg_s_wrong_card = 'Rossz Kartya!   '
+        self.msg_s_start_route = 'Porneste Ruta   '
