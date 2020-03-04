@@ -1,8 +1,9 @@
 import pytest
-from tracker import get_gps_port
+from tracker_oop import GPS
 
 
 def test_port():
-    port = get_gps_port('u-blox')
-    assert port == '/dev/ttyACM0'
-
+    assert '/dev/tty' in GPS().get_gps_port('1546')
+    with pytest.raises(TypeError):
+        GPS().get_gps_port('1234')
+        GPS().get_gps_port(1234)
