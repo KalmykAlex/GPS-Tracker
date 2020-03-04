@@ -16,9 +16,9 @@ from serial.tools import list_ports
 from geopy.distance import geodesic
 from mfrc522 import SimpleMFRC522
 
-from .lcd_functions import LCD
-from .buzzer_functions import Buzzer
-from .languages import English, Romanian, Hungarian
+from lcd_functions import LCD
+from buzzer_functions import Buzzer
+from languages import English, Romanian, Hungarian
 
 
 # Declaring MixIn's for Thread Events and Queues ##############################
@@ -81,31 +81,34 @@ class RFID(threading.Thread,
     def run(self):
         id_list = deque(maxlen=2)
         while not self.shutdown.is_set():
-            id_list.append(self.reader.read_id())  # blocking
-            logger.info(f'RC522 Card Read. ID: {id_list[0]}.')
-            if len(id_list) == 1 and not self.unexpected_shutdown.is_set():
-                print('Start Route')  # TODO: remove
-                self.ui_event_start_route.set()
-                logger.info('Route started.')
-                self.id_queue.put(id_list[0])
-                self.start_signal.set()
-            if not all([_id in self.id_database for _id in id_list]):
-                invalid_card_id = id_list.pop()
-                print('Invalid Card')  # TODO: remove
-                self.ui_event_invalid_card.set()
-                logger.warning(f'RC522: Invalid Card! ID: {invalid_card_id}')
-            if len(set(id_list)) == 2:
-                wrong_card_id = id_list.pop()
-                print('Wrong Card')  # TODO: remove
-                self.ui_event_wrong_card.set()
-                logger.warning(f'RC522: Wrong card to end journey! ID: {wrong_card_id}')
-            if len(id_list) == 2 or self.unexpected_shutdown.is_set():
-                id_list.clear()
-                print('Stop Route')  # TODO: remove
-                self.ui_event_stop_route.set()
-                logger.info('Route ended.')
-                self.unexpected_shutdown.clear()
-                self.stop_signal.set()
+            time.sleep(3)
+            if self.unexpected_shutdown.is_set():
+                id_list.append(self.id_queue.get())
+            else:
+                id_list.append(self.reader.read_id())  # blocking
+                logger.info(f'RC522 Card Read. ID: {id_list[0]}.')
+                if len(id_list) == 1:
+                    print('Start Route')  # TODO: remove
+                    self.ui_event_start_route.set()
+                    logger.info('Route started.')
+                    self.id_queue.put(id_list[0])
+                    self.start_signal.set()
+                if not all([_id in self.id_database for _id in id_list]):
+                    invalid_card_id = id_list.pop()
+                    print('Invalid Card')  # TODO: remove
+                    self.ui_event_invalid_card.set()
+                    logger.warning(f'RC522: Invalid Card! ID: {invalid_card_id}')
+                if len(set(id_list)) == 2:
+                    wrong_card_id = id_list.pop()
+                    print('Wrong Card')  # TODO: remove
+                    self.ui_event_wrong_card.set()
+                    logger.warning(f'RC522: Wrong card to end journey! ID: {wrong_card_id}')
+                if len(id_list) == 2:
+                    id_list.clear()
+                    print('Stop Route')  # TODO: remove
+                    self.ui_event_stop_route.set()
+                    logger.info('Route ended.')
+                    self.stop_signal.set()
             time.sleep(3)
 
 
@@ -123,18 +126,21 @@ class GPS(threading.Thread,
         self.port = self.get_gps_port(vid)
 
     def run(self):
-        try:
-            with serial.Serial(self.port) as ser:
-                while not self.shutdown.is_set():
+        while not self.shutdown.is_set():
+            try:
+                with serial.Serial(self.port) as ser:
                     raw_data = ser.readline()
                     if raw_data[3:6] == b'RMC':
                         self.data_queue.put(self.extract_parameters(raw_data))
                         if self.data_queue.full():
                             self.data_queue.get()
-        except IOError:
-            print('GPS signal not found.')  # TODO: remove
-            logger.warning('GPS signal not found. Waiting for GPS signal...')
-            self.ui_event_not_found_gps.set()
+            except IOError:
+                print('GPS signal not found.')  # TODO: remove
+                logger.warning('GPS signal not found. Waiting for GPS signal...')
+                self.ui_event_not_found_gps.set()
+                time.sleep(1)
+            else:
+                self.ui_event_not_found_gps.clear()
 
     def extract_parameters(self, data):
         """Extract the timestamp, latitude and longitude out of a RMC NMEA bytes object."""
@@ -150,6 +156,7 @@ class GPS(threading.Thread,
             logger.warning('Weak GPS signal! Waiting for stronger signal...')
             self.ui_event_weak_gps.set()
         else:
+            self.ui_event_weak_gps.clear()
             return timestamp, lat, lon
 
     @staticmethod
@@ -179,6 +186,7 @@ class UserInterface(threading.Thread,
             raise NotImplementedError('Available languages: RO, EN, HU')
 
     def run(self):
+        ran_once = False
         self.lcd.display(self.lang.msg_s_starting, 1)
         self.lcd.display(self.lang.msg_s_tracker, 2)
         self.buzzer.beep_for(0.5)
@@ -191,6 +199,7 @@ class UserInterface(threading.Thread,
                 self.buzzer.beep_error()
                 self.lcd.display(self.lang.msg_s_error, 1)
                 self.lcd.display_scrolling(self.lang.msg_d_connect_gps, 2, num_scrolls=1)
+                self.ui_event_not_found_gps.clear()
 
             if self.ui_event_time_set.is_set():
                 timestamp = self.ui_queue_time_set.get()
@@ -204,8 +213,11 @@ class UserInterface(threading.Thread,
                 self.lcd.display(self.lang.msg_s_weak_gps, 1)
                 self.buzzer.beep_for(1)
                 self.lcd.display_scrolling(self.lang.msg_d_waiting_for_signal, 2, num_scrolls=1)
+                self.ui_event_weak_gps.clear()
 
-            if self.unexpected_shutdown.is_set():
+            if self.unexpected_shutdown.is_set() and not self.ui_event_weak_gps.is_set():
+                self.unexpected_shutdown.clear()
+                self.lcd.clear()
                 self.lcd.display(self.lang.msg_s_wait, 1)
                 self.buzzer.beep_error()
                 self.lcd.display_scrolling(self.lang.msg_d_unexpected_termination, 2, num_scrolls=1)
@@ -222,10 +234,15 @@ class UserInterface(threading.Thread,
                 self.ui_event_start_route.clear()
 
             if self.ui_event_enroute.is_set():
-                distance = self.ui_queue_distance.get()
-                self.lcd.display(self.lang.msg_s_active_route, 1)
-                self.lcd.display(self.lang.msg_s_distance.format(round(distance / 1000, 2)), 2)
-                time.sleep(0.2)
+                try:
+                    distance = self.ui_queue_distance.get(block=False)
+                except queue.Empty:
+                    pass
+                else:
+                    self.lcd.display(self.lang.msg_s_active_route, 1)
+                    self.lcd.display(self.lang.msg_s_distance.format(round(distance / 1000, 2)), 2)
+                finally:
+                    time.sleep(0.2)
 
             if self.ui_event_stop_route.is_set():
                 self.lcd.display(self.lang.msg_s_end_of_route, 1)
@@ -235,15 +252,19 @@ class UserInterface(threading.Thread,
                 self.ui_event_stop_route.clear()
 
             if self.ui_event_invalid_card.is_set():
+                self.lcd.clear()
                 self.lcd.display(self.lang.msg_s_error, 1)
                 self.buzzer.beep_for(1)
                 self.lcd.display(self.lang.msg_s_invalid_card, 2)
+                time.sleep(1)
                 self.ui_event_invalid_card.clear()
 
             if self.ui_event_wrong_card.is_set():
+                self.lcd.clear()
                 self.lcd.display(self.lang.msg_s_warning, 1)
                 self.buzzer.beep_for(1)
                 self.lcd.display(self.lang.msg_s_wrong_card, 2)
+                time.sleep(1)
                 self.ui_event_wrong_card.clear()
 
 
@@ -284,17 +305,27 @@ class Journey(ShutdownMixin,
                 self.ui_event_not_enroute.clear()
                 self.user_id = self.id_queue.get()
                 self.gps_buffer.append(self.data_queue.get())
+                print(self.gps_buffer)
                 self.timestamp_start, self.lat_start, self.lon_start = self.gps_buffer[0]
 
             while not self.stop_signal.is_set():
+                print('stop signal: ',self.stop_signal.is_set())
+                print('weak gps: ', self.ui_event_weak_gps.is_set())
                 self.gps_buffer.append(self.data_queue.get())
-                self.timestamp, self.lat, self.lon = self.gps_buffer[1]
-                self._log_as_csv()
-                gps_data = [data[1:] for data in self.gps_buffer]
-                self.total_distance = self.calculate_distance(gps_data, self.total_distance)
-                self.ui_event_enroute.set()
-                print('Distance: ', self.total_distance)
+                print(self.gps_buffer)
+                if not self.ui_event_weak_gps.is_set():
+                    self.timestamp, self.lat, self.lon = self.gps_buffer[1]
+                    self._log_as_csv()
+                    try:
+                    	gps_data = [data[1:] for data in self.gps_buffer]
+                    except TypeError:
+                        pass
+                    else:
+                    	self.total_distance = self.calculate_distance(gps_data, self.total_distance)
+                    	self.ui_event_enroute.set()
+                    	print('Distance: ', self.total_distance)
 
+            self.ui_event_enroute.clear()
             self.gps_buffer.append(self.data_queue.get())
             self.timestamp_stop, self.lat_stop, self.lon_stop = self.gps_buffer[1]
 
@@ -320,11 +351,15 @@ class Journey(ShutdownMixin,
         return route_id
 
     def _gps_time_update(self):
-        timestamp = self.data_queue.get()[0]
-        subprocess.call([f'sudo date -s "{timestamp[2:10]} {timestamp[11:-1]}"'], shell=True)
-        logger.info(f'System time has been set to: {timestamp}')
-        self.ui_event_time_set.set()
-        self.ui_queue_time_set.put(f'{timestamp[:10]} {timestamp[11:-1]}')
+        try:
+            timestamp = self.data_queue.get()[0]
+        except TypeError as e:
+            print('eroare:', e)
+        else:
+            subprocess.call([f'sudo date -s "{timestamp[2:10]} {timestamp[11:-1]}"'], shell=True)
+            logger.info(f'System time has been set to: {timestamp}')
+            self.ui_event_time_set.set()
+            self.ui_queue_time_set.put(f'{timestamp[:10]} {timestamp[11:-1]}')
 
     def _log_as_csv(self):
         """Create a CSV formatted log unique to each route
@@ -365,9 +400,10 @@ class Journey(ShutdownMixin,
         """Grab the route parameters from the last logged route."""
         self.unexpected_shutdown.set()
         routes_dir = self.gps_logs_dir + 'routes/'
-        self.user_id = os.path.basename(
+        self.user_id = int(os.path.basename(
             glob.glob(routes_dir + f'route_{self.route_id}_*')[0]) \
-            .split('_')[-1].split('.')[0]
+            .split('_')[-1].split('.')[0])
+        self.id_queue.put(self.user_id)
         with open(routes_dir + f'route_{self.route_id}_{self.user_id}.csv') as file:
             lines = file.read().splitlines()
             self.total_distance = float(lines[-1].split(',')[-1])
@@ -431,12 +467,14 @@ if __name__ == '__main__':
 
     ###########################################################################
 
+    ui = UserInterface()
     read = GPS()
     rfid = RFID()
     journey = Journey()
 
     rfid.start()
     read.start()
+    ui.start()
     while not journey.shutdown.is_set():
         journey.run()
     read.join()

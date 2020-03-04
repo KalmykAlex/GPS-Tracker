@@ -6,7 +6,7 @@ from flask_restful import Api
 from subprocess import check_output
 
 # From current directory (lcd_functions.py and buzzer_functions.py)
-from lcd_functions import Lcd
+from lcd_functions import LCD
 from buzzer_functions import Buzzer
 
 
@@ -58,7 +58,7 @@ def get_routes():
 
 if __name__ == '__main__':
 
-    lcd = Lcd()
+    lcd = LCD()
     buzzer = Buzzer()
 
     buzzer.beep()
