@@ -15,6 +15,6 @@ if ifconfig | grep -i "eth0" > /dev/null 2>&1; then
         sudo python3 $base_dir/api.py &>> $base_dir/logs/system_logs/api.log
     else
         # No cable connected
-        sudo python3 $base_dir/tracker.py &>> $base_dir/logs/system_logs/tracker_output.log
+        sudo python3 $base_dir/tracker_oop.py &>> $base_dir/logs/system_logs/tracker_output.log
     fi
 fi
