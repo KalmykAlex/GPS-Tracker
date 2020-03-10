@@ -121,14 +121,13 @@ class GPS(threading.Thread,
     """
     ublox_vid = '1546'
 
-    def __init__(self, vid=ublox_vid):
+    def __init__(self):
         threading.Thread.__init__(self)
-        self.port = self.get_gps_port(vid)
 
     def run(self):
         while not self.shutdown.is_set():
             try:
-                with serial.Serial(self.port) as ser:
+                with serial.Serial(self.get_gps_port(self.ublox_vid)) as ser:
                     raw_data = ser.readline()
                     if raw_data[3:6] == b'RMC':
                         self.data_queue.put(self.extract_parameters(raw_data))
@@ -198,9 +197,9 @@ class UserInterface(threading.Thread,
                 self.buzzer.beep_error()
                 self.lcd.display(self.lang.msg_s_error, 1)
                 self.lcd.display_scrolling(self.lang.msg_d_connect_gps, 2, num_scrolls=1)
-                self.ui_event_not_found_gps.clear()
 
             if self.ui_event_time_set.is_set():
+                self.lcd.display(self.lang.msg_s_updating_time, 1)
                 timestamp = self.ui_queue_time_set.get()
                 self.lcd.display(self.lang.msg_s_gps_time_updated, 2)
                 time.sleep(1)
@@ -212,7 +211,6 @@ class UserInterface(threading.Thread,
                 self.lcd.display(self.lang.msg_s_weak_gps, 1)
                 self.buzzer.beep_for(1)
                 self.lcd.display_scrolling(self.lang.msg_d_waiting_for_signal, 2, num_scrolls=1)
-                self.ui_event_weak_gps.clear()
 
             if self.unexpected_shutdown.is_set() and not self.ui_event_weak_gps.is_set():
                 self.unexpected_shutdown.clear()
@@ -290,13 +288,15 @@ class Journey(ShutdownMixin,
     def run(self):
         logger.info('Tracker Started.')
         logger.info('Starting GPS Time Update.')
-        updated_time = False
 
         while not self.shutdown.is_set():
             self.route_id = self._init_route_id()
-            if not updated_time:
-                self._gps_time_update()
-                updated_time = True
+            while not self.ui_event_time_set.is_set():
+                self.ui_event_not_found_gps.wait(0.5)
+                self.ui_event_weak_gps.wait(0.5)
+                if not (self.ui_event_not_found_gps.is_set() or self.ui_event_weak_gps.is_set()):
+                    self._gps_time_update()
+
             if self._check_unexpected_shutdown():
                 self._fix_unexpected_shutdown()
                 print('Unexpected shutdown detected. '
