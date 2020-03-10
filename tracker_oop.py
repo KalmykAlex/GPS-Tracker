@@ -186,7 +186,6 @@ class UserInterface(threading.Thread,
             raise NotImplementedError('Available languages: RO, EN, HU')
 
     def run(self):
-        ran_once = False
         self.lcd.display(self.lang.msg_s_starting, 1)
         self.lcd.display(self.lang.msg_s_tracker, 2)
         self.buzzer.beep_for(0.5)
@@ -291,10 +290,13 @@ class Journey(ShutdownMixin,
     def run(self):
         logger.info('Tracker Started.')
         logger.info('Starting GPS Time Update.')
-        self._gps_time_update()
+        updated_time = False
 
         while not self.shutdown.is_set():
             self.route_id = self._init_route_id()
+            if not updated_time:
+                self._gps_time_update()
+                updated_time = True
             if self._check_unexpected_shutdown():
                 self._fix_unexpected_shutdown()
                 print('Unexpected shutdown detected. '
@@ -309,7 +311,7 @@ class Journey(ShutdownMixin,
                 self.timestamp_start, self.lat_start, self.lon_start = self.gps_buffer[0]
 
             while not self.stop_signal.is_set():
-                print('stop signal: ',self.stop_signal.is_set())
+                print('stop signal: ', self.stop_signal.is_set())
                 print('weak gps: ', self.ui_event_weak_gps.is_set())
                 self.gps_buffer.append(self.data_queue.get())
                 print(self.gps_buffer)
@@ -317,13 +319,13 @@ class Journey(ShutdownMixin,
                     self.timestamp, self.lat, self.lon = self.gps_buffer[1]
                     self._log_as_csv()
                     try:
-                    	gps_data = [data[1:] for data in self.gps_buffer]
+                        gps_data = [data[1:] for data in self.gps_buffer]
                     except TypeError:
                         pass
                     else:
-                    	self.total_distance = self.calculate_distance(gps_data, self.total_distance)
-                    	self.ui_event_enroute.set()
-                    	print('Distance: ', self.total_distance)
+                        self.total_distance = self.calculate_distance(gps_data, self.total_distance)
+                        self.ui_event_enroute.set()
+                        print('Distance: ', self.total_distance)
 
             self.ui_event_enroute.clear()
             self.gps_buffer.append(self.data_queue.get())
