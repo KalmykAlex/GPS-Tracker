@@ -113,11 +113,19 @@ for RFID Card Readings and signals the Main thread to start logging the GPS data
 A RESTful API developed with flask that provides GPS logs data to GET requests. By default the API works on port 5000.
 All the responses are in JSON format.
 
-Requests implemented so far:
-- \<HOST IP>:\<PORT>/routes - returns route data for all the logged routes
-- \<HOST IP>:\<PORT>/routes?route_id=\<ROUTE_ID> - returns the route data for the specified route
-- \<HOST IP>:\<PORT>/routes?user_id=\<USER_ID> - returns route date for all the routes that were made by a specific user
+GET Requests implemented so far:
 
+    <HOST IP>:<PORT>/routes - returns route data for all the logged routes
+    <HOST IP>:<PORT>/routes?route_id=<ROUTE_ID> - returns the route data for the specified route ID
+    <HOST IP>:<PORT>/routes?user_id=<USER_ID> - returns route data for all the routes that were made by a specific user
+
+Parameters:
+
+    <HOST IP> - IP of the Raspberry PI (eg. 172.16.3.123)
+    <PORT> - Port of the flask API (default port is 5000)
+    <ROUTE_ID> - Number that uniquely identifies the route (starts at 1 for the first logged route)
+    <USER_ID> - 12 digit number (eg. 780870559455)
+    
 #### Cleanup.sh
 
 This is a bash script that removes all the logs from their locations. This is implemented for testing purposes, to get rid of logs that we don't want and to clean the system.
@@ -150,7 +158,7 @@ the _logs_ folder. It's name is _route_\_\<routeID>_\_\<cardID>.csv_.
 
 The CSV file contains the timestamp, latitude, longitude and total_distance.
 
-    Timestamp               Latitude        Longitude       Total_Distance
+    Timestamp               Latitude        Longitude       Total_Distance (m)
     2020-02-06T13:59:14Z	44.424582	26.053711	0
     2020-02-06T13:59:15Z	44.424571	26.053722	1.5
     2020-02-06T13:59:16Z	44.424557	26.053733	3.29

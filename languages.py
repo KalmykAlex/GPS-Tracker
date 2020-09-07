@@ -45,7 +45,7 @@ class Romanian:
         self.msg_s_gps_time_updated = 'Timp Actualizat '
         self.msg_d_timestamp = '{} 20{} UTC'  #{hh:mm} 20{YY-MM-DD} UTC
         self.msg_s_tracker = 'Trackerul       '
-        self.msg_s_weak_gps = 'Semanal GPS Slab'
+        self.msg_s_weak_gps = 'Semnal GPS Slab '
         self.msg_s_active_route = 'Ruta: ACTIVA    '
         self.msg_s_inactive_route = 'Ruta: INACTIVA  '
         self.msg_s_swipe_to_start = 'Apropiati cardul'
